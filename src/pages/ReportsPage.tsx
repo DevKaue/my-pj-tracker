@@ -149,16 +149,16 @@ export default function ReportsPage() {
           <div className="space-y-2">
             <Label>Organização</Label>
             <Select
-              value={filters.organizationId}
+              value={filters.organizationId || "all"}
               onValueChange={(value) =>
-                setFilters({ ...filters, organizationId: value, projectId: '' })
+                setFilters({ ...filters, organizationId: value === "all" ? "" : value, projectId: '' })
               }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 {organizations.map((org) => (
                   <SelectItem key={org.id} value={org.id}>
                     {org.name}
@@ -170,14 +170,14 @@ export default function ReportsPage() {
           <div className="space-y-2">
             <Label>Projeto</Label>
             <Select
-              value={filters.projectId}
-              onValueChange={(value) => setFilters({ ...filters, projectId: value })}
+              value={filters.projectId || "all"}
+              onValueChange={(value) => setFilters({ ...filters, projectId: value === "all" ? "" : value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 {filteredProjects.map((project) => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.name}
