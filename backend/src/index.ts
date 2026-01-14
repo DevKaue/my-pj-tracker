@@ -51,7 +51,7 @@ db.exec(`
 `);
 
 const orgSchema = z.object({
-  name: z.string().min(1, 'Nome é obrigatório / Name is required'),
+  name: z.string().min(1, 'Nome e obrigatorio / Name is required'),
   cnpj: z.string().optional(),
   email: z.string().email().optional(),
   phone: z.string().optional(),
@@ -106,50 +106,21 @@ type TaskRow = {
 
 const mapOrg = (row: OrgRow) => ({ ...row });
 const mapProject = (row: ProjectRow) => ({ ...row });
-const mapTask = (row: TaskRow) => ({ ...row, date: row.date });
+const mapTask = (row: TaskRow) => ({ ...row });
 
 const openApiDoc = {
   openapi: '3.0.0',
   info: {
     title: 'PJ Manager API',
-    description: 'API REST para organizações, projetos e tarefas (PT/EN)',
+    description: 'API REST para organizacoes, projetos e tarefas (PT/EN)',
     version: '1.0.0',
   },
   servers: [{ url: 'http://localhost:4000' }],
   tags: [
-    { name: 'Organizations', description: 'Organizações / Organizations' },
+    { name: 'Organizations', description: 'Organizacoes / Organizations' },
     { name: 'Projects', description: 'Projetos / Projects' },
     { name: 'Tasks', description: 'Tarefas / Tasks' },
   ],
-  paths: {
-    '/organizations': {
-      get: { tags: ['Organizations'], summary: 'Lista organizações', responses: { 200: { description: 'OK' } } },
-      post: { tags: ['Organizations'], summary: 'Cria organização', requestBody: { required: true }, responses: { 201: { description: 'Criado' } } },
-    },
-    '/organizations/{id}': {
-      put: { tags: ['Organizations'], summary: 'Atualiza organização', parameters: [{ name: 'id', in: 'path', required: true }], requestBody: { required: true }, responses: { 200: { description: 'OK' } } },
-      delete: { tags: ['Organizations'], summary: 'Remove organização', parameters: [{ name: 'id', in: 'path', required: true }], responses: { 204: { description: 'Removido' } } },
-    },
-    '/projects': {
-      get: { tags: ['Projects'], summary: 'Lista projetos (organizationId opcional)', parameters: [{ name: 'organizationId', in: 'query', required: false }], responses: { 200: { description: 'OK' } } },
-      post: { tags: ['Projects'], summary: 'Cria projeto', requestBody: { required: true }, responses: { 201: { description: 'Criado' } } },
-    },
-    '/projects/{id}': {
-      put: { tags: ['Projects'], summary: 'Atualiza projeto', parameters: [{ name: 'id', in: 'path', required: true }], requestBody: { required: true }, responses: { 200: { description: 'OK' } } },
-      delete: { tags: ['Projects'], summary: 'Remove projeto', parameters: [{ name: 'id', in: 'path', required: true }], responses: { 204: { description: 'Removido' } } },
-    },
-    '/tasks': {
-      get: { tags: ['Tasks'], summary: 'Lista tarefas (filtros opcional)', parameters: [{ name: 'projectId', in: 'query' }, { name: 'organizationId', in: 'query' }], responses: { 200: { description: 'OK' } } },
-      post: { tags: ['Tasks'], summary: 'Cria tarefa', requestBody: { required: true }, responses: { 201: { description: 'Criado' } } },
-    },
-    '/tasks/{id}': {
-      put: { tags: ['Tasks'], summary: 'Atualiza tarefa', parameters: [{ name: 'id', in: 'path', required: true }], requestBody: { required: true }, responses: { 200: { description: 'OK' } } },
-      delete: { tags: ['Tasks'], summary: 'Remove tarefa', parameters: [{ name: 'id', in: 'path', required: true }], responses: { 204: { description: 'Removido' } } },
-    },
-    '/health': {
-      get: { tags: ['Health'], summary: 'Healthcheck', responses: { 200: { description: 'OK' } } },
-    },
-  },
 };
 
 const app = express();
@@ -157,12 +128,9 @@ app.use(cors());
 app.use(express.json());
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(openApiDoc));
 
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', now: new Date().toISOString() });
-});
-
+// Organizations
 app.get('/organizations', (_req, res) => {
-  const rows = db.prepare<[], OrgRow>('SELECT * FROM organizations ORDER BY createdAt DESC').all();
+  const rows = db.prepare('SELECT * FROM organizations ORDER BY createdAt DESC').all() as OrgRow[];
   res.json(rows.map(mapOrg));
 });
 
@@ -175,7 +143,7 @@ app.post('/organizations', (req, res, next) => {
       `INSERT INTO organizations (id, name, cnpj, email, phone, createdAt)
        VALUES (@id, @name, @cnpj, @email, @phone, @createdAt)`
     ).run({ id, ...data, createdAt });
-    const org = db.prepare<OrgRow, OrgRow>('SELECT * FROM organizations WHERE id = ?').get(id);
+    const org = db.prepare('SELECT * FROM organizations WHERE id = ?').get(id) as OrgRow;
     res.status(201).json(mapOrg(org));
   } catch (err) {
     next(err);
@@ -185,12 +153,12 @@ app.post('/organizations', (req, res, next) => {
 app.put('/organizations/:id', (req, res, next) => {
   try {
     const id = req.params.id;
-    const existing = db.prepare<OrgRow, OrgRow>('SELECT * FROM organizations WHERE id = ?').get(id);
-    if (!existing) return res.status(404).json({ message: 'Organização não encontrada / Not found' });
+    const existing = db.prepare('SELECT * FROM organizations WHERE id = ?').get(id) as OrgRow | undefined;
+    if (!existing) return res.status(404).json({ message: 'Organizacao nao encontrada / Not found' });
     const data = orgSchema.partial().parse(req.body);
     const updated = { ...existing, ...data };
     db.prepare(`UPDATE organizations SET name=@name, cnpj=@cnpj, email=@email, phone=@phone WHERE id=@id`).run({ ...updated, id });
-    const org = db.prepare<OrgRow, OrgRow>('SELECT * FROM organizations WHERE id = ?').get(id);
+    const org = db.prepare('SELECT * FROM organizations WHERE id = ?').get(id) as OrgRow;
     res.json(mapOrg(org));
   } catch (err) {
     next(err);
@@ -199,8 +167,8 @@ app.put('/organizations/:id', (req, res, next) => {
 
 app.delete('/organizations/:id', (req, res) => {
   const id = req.params.id;
-  const existing = db.prepare<OrgRow, OrgRow>('SELECT * FROM organizations WHERE id = ?').get(id);
-  if (!existing) return res.status(404).json({ message: 'Organização não encontrada / Not found' });
+  const existing = db.prepare('SELECT * FROM organizations WHERE id = ?').get(id) as OrgRow | undefined;
+  if (!existing) return res.status(404).json({ message: 'Organizacao nao encontrada / Not found' });
   const tx = db.transaction(() => {
     db.prepare('DELETE FROM tasks WHERE projectId IN (SELECT id FROM projects WHERE organizationId = ?)').run(id);
     db.prepare('DELETE FROM projects WHERE organizationId = ?').run(id);
@@ -210,13 +178,14 @@ app.delete('/organizations/:id', (req, res) => {
   res.status(204).send();
 });
 
+// Projects
 app.get('/projects', (req, res) => {
   const { organizationId } = req.query;
   let rows: ProjectRow[] = [];
   if (organizationId) {
-    rows = db.prepare<[string], ProjectRow>('SELECT * FROM projects WHERE organizationId = ? ORDER BY createdAt DESC').all(String(organizationId));
+    rows = db.prepare('SELECT * FROM projects WHERE organizationId = ? ORDER BY createdAt DESC').all(String(organizationId)) as ProjectRow[];
   } else {
-    rows = db.prepare<[], ProjectRow>('SELECT * FROM projects ORDER BY createdAt DESC').all();
+    rows = db.prepare('SELECT * FROM projects ORDER BY createdAt DESC').all() as ProjectRow[];
   }
   res.json(rows.map(mapProject));
 });
@@ -224,15 +193,15 @@ app.get('/projects', (req, res) => {
 app.post('/projects', (req, res, next) => {
   try {
     const data = projectSchema.parse(req.body);
-    const org = db.prepare<OrgRow, OrgRow>('SELECT * FROM organizations WHERE id = ?').get(data.organizationId);
-    if (!org) return res.status(400).json({ message: 'Organização inexistente / Unknown organization' });
+    const org = db.prepare('SELECT * FROM organizations WHERE id = ?').get(data.organizationId) as OrgRow | undefined;
+    if (!org) return res.status(400).json({ message: 'Organizacao inexistente / Unknown organization' });
     const id = randomUUID();
     const createdAt = new Date().toISOString();
     db.prepare(
       `INSERT INTO projects (id, name, description, organizationId, hourlyRate, status, createdAt)
        VALUES (@id, @name, @description, @organizationId, @hourlyRate, @status, @createdAt)`
     ).run({ id, ...data, createdAt });
-    const project = db.prepare<ProjectRow, ProjectRow>('SELECT * FROM projects WHERE id = ?').get(id);
+    const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as ProjectRow;
     res.status(201).json(mapProject(project));
   } catch (err) {
     next(err);
@@ -242,12 +211,12 @@ app.post('/projects', (req, res, next) => {
 app.put('/projects/:id', (req, res, next) => {
   try {
     const id = req.params.id;
-    const existing = db.prepare<ProjectRow, ProjectRow>('SELECT * FROM projects WHERE id = ?').get(id);
-    if (!existing) return res.status(404).json({ message: 'Projeto não encontrado / Not found' });
+    const existing = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as ProjectRow | undefined;
+    if (!existing) return res.status(404).json({ message: 'Projeto nao encontrado / Not found' });
     const data = projectSchema.partial().parse(req.body);
     if (data.organizationId) {
-      const org = db.prepare<OrgRow, OrgRow>('SELECT * FROM organizations WHERE id = ?').get(data.organizationId);
-      if (!org) return res.status(400).json({ message: 'Organização inexistente / Unknown organization' });
+      const org = db.prepare('SELECT * FROM organizations WHERE id = ?').get(data.organizationId) as OrgRow | undefined;
+      if (!org) return res.status(400).json({ message: 'Organizacao inexistente / Unknown organization' });
     }
     const updated = { ...existing, ...data };
     db.prepare(
@@ -255,7 +224,7 @@ app.put('/projects/:id', (req, res, next) => {
        SET name=@name, description=@description, organizationId=@organizationId, hourlyRate=@hourlyRate, status=@status
        WHERE id=@id`
     ).run({ ...updated, id });
-    const project = db.prepare<ProjectRow, ProjectRow>('SELECT * FROM projects WHERE id = ?').get(id);
+    const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as ProjectRow;
     res.json(mapProject(project));
   } catch (err) {
     next(err);
@@ -270,27 +239,28 @@ app.delete('/projects/:id', (req, res) => {
   });
   tx();
   const deleted = db.prepare('SELECT changes() as changes').get() as { changes: number };
-  if (deleted.changes === 0) return res.status(404).json({ message: 'Projeto não encontrado / Not found' });
+  if (deleted.changes === 0) return res.status(404).json({ message: 'Projeto nao encontrado / Not found' });
   res.status(204).send();
 });
 
+// Tasks
 app.get('/tasks', (req, res) => {
   const { projectId, organizationId } = req.query;
   let rows: TaskRow[] = [];
 
   if (projectId) {
-    rows = db.prepare<[string], TaskRow>('SELECT * FROM tasks WHERE projectId = ? ORDER BY date DESC, createdAt DESC').all(String(projectId));
+    rows = db.prepare('SELECT * FROM tasks WHERE projectId = ? ORDER BY date DESC, createdAt DESC').all(String(projectId)) as TaskRow[];
   } else if (organizationId) {
     rows = db
-      .prepare<[string], TaskRow>(
+      .prepare(
         `SELECT t.* FROM tasks t
          JOIN projects p ON t.projectId = p.id
          WHERE p.organizationId = ?
          ORDER BY t.date DESC, t.createdAt DESC`
       )
-      .all(String(organizationId));
+      .all(String(organizationId)) as TaskRow[];
   } else {
-    rows = db.prepare<[], TaskRow>('SELECT * FROM tasks ORDER BY date DESC, createdAt DESC').all();
+    rows = db.prepare('SELECT * FROM tasks ORDER BY date DESC, createdAt DESC').all() as TaskRow[];
   }
   res.json(rows.map(mapTask));
 });
@@ -298,7 +268,7 @@ app.get('/tasks', (req, res) => {
 app.post('/tasks', (req, res, next) => {
   try {
     const parsed = taskSchema.parse(req.body);
-    const project = db.prepare<ProjectRow, ProjectRow>('SELECT * FROM projects WHERE id = ?').get(parsed.projectId);
+    const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(parsed.projectId) as ProjectRow | undefined;
     if (!project) return res.status(400).json({ message: 'Projeto inexistente / Unknown project' });
     const id = randomUUID();
     const createdAt = new Date().toISOString();
@@ -306,7 +276,7 @@ app.post('/tasks', (req, res, next) => {
       `INSERT INTO tasks (id, title, description, projectId, hours, date, status, createdAt)
        VALUES (@id, @title, @description, @projectId, @hours, @date, @status, @createdAt)`
     ).run({ id, ...parsed, createdAt });
-    const task = db.prepare<TaskRow, TaskRow>('SELECT * FROM tasks WHERE id = ?').get(id);
+    const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as TaskRow;
     res.status(201).json(mapTask(task));
   } catch (err) {
     next(err);
@@ -316,11 +286,11 @@ app.post('/tasks', (req, res, next) => {
 app.put('/tasks/:id', (req, res, next) => {
   try {
     const id = req.params.id;
-    const existing = db.prepare<TaskRow, TaskRow>('SELECT * FROM tasks WHERE id = ?').get(id);
-    if (!existing) return res.status(404).json({ message: 'Tarefa não encontrada / Not found' });
+    const existing = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as TaskRow | undefined;
+    if (!existing) return res.status(404).json({ message: 'Tarefa nao encontrada / Not found' });
     const data = taskSchema.partial().parse(req.body);
     if (data.projectId) {
-      const project = db.prepare<ProjectRow, ProjectRow>('SELECT * FROM projects WHERE id = ?').get(data.projectId);
+      const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(data.projectId) as ProjectRow | undefined;
       if (!project) return res.status(400).json({ message: 'Projeto inexistente / Unknown project' });
     }
     const updated = { ...existing, ...data };
@@ -329,7 +299,7 @@ app.put('/tasks/:id', (req, res, next) => {
        SET title=@title, description=@description, projectId=@projectId, hours=@hours, date=@date, status=@status
        WHERE id=@id`
     ).run({ ...updated, id });
-    const task = db.prepare<TaskRow, TaskRow>('SELECT * FROM tasks WHERE id = ?').get(id);
+    const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as TaskRow;
     res.json(mapTask(task));
   } catch (err) {
     next(err);
@@ -339,14 +309,14 @@ app.put('/tasks/:id', (req, res, next) => {
 app.delete('/tasks/:id', (req, res) => {
   const id = req.params.id;
   const result = db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
-  if (result.changes === 0) return res.status(404).json({ message: 'Tarefa não encontrada / Not found' });
+  if (result.changes === 0) return res.status(404).json({ message: 'Tarefa nao encontrada / Not found' });
   res.status(204).send();
 });
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error('API error', err);
   if (err instanceof z.ZodError) {
-    return res.status(400).json({ message: 'Dados inválidos / Invalid data', issues: err.issues });
+    return res.status(400).json({ message: 'Dados invalidos / Invalid data', issues: err.issues });
   }
   res.status(500).json({ message: 'Erro interno / Internal server error' });
 });
