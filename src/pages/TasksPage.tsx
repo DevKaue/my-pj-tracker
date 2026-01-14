@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useStore } from '@/store/useStore';
+import { useState, useMemo } from 'react';
+import { useOrganizations, useProjects, useTasks } from '@/hooks/useData';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -38,7 +38,9 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function TasksPage() {
-  const { organizations, projects, tasks, addTask, updateTask, deleteTask } = useStore();
+  const { organizationsQuery } = useOrganizations();
+  const { projectsQuery } = useProjects();
+  const { tasksQuery, createTask, updateTask, deleteTask } = useTasks();
   const [isOpen, setIsOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formData, setFormData] = useState({
@@ -50,10 +52,14 @@ export default function TasksPage() {
     status: 'pending' as Task['status'],
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const organizations = organizationsQuery.data || [];
+  const projects = projectsQuery.data || [];
+  const tasks = tasksQuery.data || [];
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.projectId) {
-      toast.error('Título e projeto são obrigatórios');
+      toast.error('Título e projeto são obrigatórios / Title and project are required');
       return;
     }
 
@@ -66,15 +72,19 @@ export default function TasksPage() {
       status: formData.status,
     };
 
-    if (editingTask) {
-      updateTask(editingTask.id, taskData);
-      toast.success('Tarefa atualizada!');
-    } else {
-      addTask(taskData);
-      toast.success('Tarefa criada!');
-    }
+    try {
+      if (editingTask) {
+        await updateTask.mutateAsync({ id: editingTask.id, payload: taskData });
+        toast.success('Tarefa atualizada!');
+      } else {
+        await createTask.mutateAsync(taskData);
+        toast.success('Tarefa criada!');
+      }
 
-    resetForm();
+      resetForm();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao salvar tarefa / Error saving task');
+    }
   };
 
   const handleEdit = (task: Task) => {
@@ -90,10 +100,14 @@ export default function TasksPage() {
     setIsOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta tarefa?')) {
-      deleteTask(id);
-      toast.success('Tarefa excluída!');
+      try {
+        await deleteTask.mutateAsync(id);
+        toast.success('Tarefa excluída!');
+      } catch (err: any) {
+        toast.error(err.message || 'Erro ao excluir tarefa / Error deleting task');
+      }
     }
   };
 
@@ -126,8 +140,9 @@ export default function TasksPage() {
     completed: 'Concluída',
   };
 
-  const sortedTasks = [...tasks].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  const sortedTasks = useMemo(
+    () => [...tasks].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [tasks]
   );
 
   return (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore } from '@/store/useStore';
+import { useOrganizations } from '@/hooks/useData';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -26,30 +26,58 @@ import { Building2, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Organization } from '@/types';
 import { toast } from 'sonner';
 
+const onlyDigits = (value: string) => value.replace(/\D/g, '');
+
+const formatCnpj = (value: string) => {
+  const digits = onlyDigits(value).slice(0, 14);
+  return digits
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d)/, '$1-$2');
+};
+
+const formatPhoneBr = (value: string) => {
+  const digits = onlyDigits(value).slice(0, 11);
+  if (digits.length <= 10) {
+    return digits
+      .replace(/^(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  }
+  return digits
+    .replace(/^(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{5})(\d)/, '$1-$2');
+};
+
 export default function OrganizationsPage() {
-  const { organizations, addOrganization, updateOrganization, deleteOrganization } = useStore();
+  const { organizationsQuery, createOrganization, updateOrganization, deleteOrganization } = useOrganizations();
   const [isOpen, setIsOpen] = useState(false);
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
   const [formData, setFormData] = useState({ name: '', cnpj: '', email: '', phone: '' });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const organizations = organizationsQuery.data || [];
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      toast.error('Nome é obrigatório');
+      toast.error('Nome é obrigatório / Name is required');
       return;
     }
 
-    if (editingOrg) {
-      updateOrganization(editingOrg.id, formData);
-      toast.success('Organização atualizada!');
-    } else {
-      addOrganization(formData);
-      toast.success('Organização criada!');
+    try {
+      if (editingOrg) {
+        await updateOrganization.mutateAsync({ id: editingOrg.id, payload: formData });
+        toast.success('Organização atualizada!');
+      } else {
+        await createOrganization.mutateAsync(formData);
+        toast.success('Organização criada!');
+      }
+      setFormData({ name: '', cnpj: '', email: '', phone: '' });
+      setEditingOrg(null);
+      setIsOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao salvar organização / Error saving organization');
     }
-
-    setFormData({ name: '', cnpj: '', email: '', phone: '' });
-    setEditingOrg(null);
-    setIsOpen(false);
   };
 
   const handleEdit = (org: Organization) => {
@@ -63,10 +91,18 @@ export default function OrganizationsPage() {
     setIsOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Tem certeza que deseja excluir esta organização? Todos os projetos e tarefas relacionados serão excluídos.')) {
-      deleteOrganization(id);
-      toast.success('Organização excluída!');
+  const handleDelete = async (id: string) => {
+    if (
+      confirm(
+        'Tem certeza que deseja excluir esta organização? Todos os projetos e tarefas relacionados serão excluídos.'
+      )
+    ) {
+      try {
+        await deleteOrganization.mutateAsync(id);
+        toast.success('Organização excluída!');
+      } catch (err: any) {
+        toast.error(err.message || 'Erro ao excluir organização / Error deleting organization');
+      }
     }
   };
 
@@ -117,8 +153,9 @@ export default function OrganizationsPage() {
                     <Label htmlFor="cnpj">CNPJ</Label>
                     <Input
                       id="cnpj"
+                      maxLength={18}
                       value={formData.cnpj}
-                      onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, cnpj: formatCnpj(e.target.value) })}
                       placeholder="00.000.000/0000-00"
                     />
                   </div>
@@ -136,8 +173,9 @@ export default function OrganizationsPage() {
                     <Label htmlFor="phone">Telefone</Label>
                     <Input
                       id="phone"
+                      maxLength={15}
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, phone: formatPhoneBr(e.target.value) })}
                       placeholder="(00) 00000-0000"
                     />
                   </div>

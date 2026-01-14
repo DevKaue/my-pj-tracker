@@ -1,6 +1,5 @@
-import { AppLayout } from '@/components/layout/AppLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { useStore } from '@/store/useStore';
+import { useOrganizations, useProjects, useTasks } from '@/hooks/useData';
 import { Clock, Building2, FolderKanban, DollarSign, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { startOfMonth, endOfMonth, isWithinInterval, format } from 'date-fns';
@@ -9,16 +8,20 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
-  const { organizations, projects, tasks } = useStore();
+  const { organizationsQuery } = useOrganizations();
+  const { projectsQuery } = useProjects();
+  const { tasksQuery } = useTasks();
+
+  const organizations = organizationsQuery.data || [];
+  const projects = projectsQuery.data || [];
+  const tasks = tasksQuery.data || [];
 
   const monthlyStats = useMemo(() => {
     const now = new Date();
     const start = startOfMonth(now);
     const end = endOfMonth(now);
 
-    const monthlyTasks = tasks.filter((task) =>
-      isWithinInterval(new Date(task.date), { start, end })
-    );
+    const monthlyTasks = tasks.filter((task) => isWithinInterval(new Date(task.date), { start, end }));
 
     const totalHours = monthlyTasks.reduce((sum, task) => sum + task.hours, 0);
     const totalValue = monthlyTasks.reduce((sum, task) => {
@@ -43,17 +46,13 @@ const Index = () => {
 
   return (
     <div className="animate-fade-in">
-      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">
-          Bem-vindo ao PJ Manager
-        </h1>
+        <h1 className="text-3xl font-bold text-foreground">Bem-vindo ao PJ Manager</h1>
         <p className="mt-1 text-muted-foreground">
           Seu painel de controle para gestão de projetos e horas
         </p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
         <StatCard
           title="Horas este mês"
@@ -85,9 +84,7 @@ const Index = () => {
         />
       </div>
 
-      {/* Quick Actions + Recent Tasks */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Quick Actions */}
         <div className="card-elevated p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" />
@@ -130,7 +127,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Recent Tasks */}
         <div className="card-elevated p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-success" />
@@ -174,7 +170,6 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Footer tip */}
       <div className="mt-8 p-4 rounded-xl bg-primary/5 border border-primary/10">
         <p className="text-sm text-center">
           💡 <span className="font-medium">Dica:</span> Comece criando uma{' '}
