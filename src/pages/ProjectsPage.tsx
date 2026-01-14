@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore } from '@/store/useStore';
+import { useOrganizations, useProjects } from '@/hooks/useData';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 export default function ProjectsPage() {
-  const { organizations, projects, addProject, updateProject, deleteProject } = useStore();
+  const { organizationsQuery } = useOrganizations();
+  const { projectsQuery, createProject, updateProject, deleteProject } = useProjects();
   const [isOpen, setIsOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState({
@@ -39,10 +40,13 @@ export default function ProjectsPage() {
     status: 'active' as Project['status'],
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const organizations = organizationsQuery.data || [];
+  const projects = projectsQuery.data || [];
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.organizationId) {
-      toast.error('Nome e organização são obrigatórios');
+      toast.error('Nome e organização são obrigatórios / Name and organization are required');
       return;
     }
 
@@ -54,15 +58,18 @@ export default function ProjectsPage() {
       status: formData.status,
     };
 
-    if (editingProject) {
-      updateProject(editingProject.id, projectData);
-      toast.success('Projeto atualizado!');
-    } else {
-      addProject(projectData);
-      toast.success('Projeto criado!');
+    try {
+      if (editingProject) {
+        await updateProject.mutateAsync({ id: editingProject.id, payload: projectData });
+        toast.success('Projeto atualizado!');
+      } else {
+        await createProject.mutateAsync(projectData);
+        toast.success('Projeto criado!');
+      }
+      resetForm();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao salvar projeto / Error saving project');
     }
-
-    resetForm();
   };
 
   const handleEdit = (project: Project) => {
@@ -77,10 +84,18 @@ export default function ProjectsPage() {
     setIsOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este projeto? Todas as tarefas relacionadas serão excluídas.')) {
-      deleteProject(id);
-      toast.success('Projeto excluído!');
+  const handleDelete = async (id: string) => {
+    if (
+      confirm(
+        'Tem certeza que deseja excluir este projeto? Todas as tarefas relacionadas serão excluídas.'
+      )
+    ) {
+      try {
+        await deleteProject.mutateAsync(id);
+        toast.success('Projeto excluído!');
+      } catch (err: any) {
+        toast.error(err.message || 'Erro ao excluir projeto / Error deleting project');
+      }
     }
   };
 

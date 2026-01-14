@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useStore } from '@/store/useStore';
+import { useOrganizations, useProjects, useTasks } from '@/hooks/useData';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -25,13 +25,19 @@ import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function ReportsPage() {
-  const { organizations, projects, tasks } = useStore();
+  const { organizationsQuery } = useOrganizations();
+  const { projectsQuery } = useProjects();
+  const { tasksQuery } = useTasks();
   const [filters, setFilters] = useState({
     startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
     endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
     organizationId: '',
     projectId: '',
   });
+
+  const organizations = organizationsQuery.data || [];
+  const projects = projectsQuery.data || [];
+  const tasks = tasksQuery.data || [];
 
   const filteredData = useMemo(() => {
     const startDate = new Date(filters.startDate);
@@ -54,7 +60,6 @@ export default function ReportsPage() {
       );
     }
 
-    // Group by project
     const byProject = filteredTasks.reduce((acc, task) => {
       const project = projects.find((p) => p.id === task.projectId);
       if (!project) return acc;
@@ -126,7 +131,6 @@ export default function ReportsPage() {
         }
       />
 
-      {/* Filters */}
       <div className="card-elevated p-6 mb-6">
         <h3 className="font-semibold mb-4">Filtros</h3>
         <div className="grid gap-4 md:grid-cols-4">
@@ -149,9 +153,9 @@ export default function ReportsPage() {
           <div className="space-y-2">
             <Label>Organização</Label>
             <Select
-              value={filters.organizationId || "all"}
+              value={filters.organizationId || 'all'}
               onValueChange={(value) =>
-                setFilters({ ...filters, organizationId: value === "all" ? "" : value, projectId: '' })
+                setFilters({ ...filters, organizationId: value === 'all' ? '' : value, projectId: '' })
               }
             >
               <SelectTrigger>
@@ -170,8 +174,8 @@ export default function ReportsPage() {
           <div className="space-y-2">
             <Label>Projeto</Label>
             <Select
-              value={filters.projectId || "all"}
-              onValueChange={(value) => setFilters({ ...filters, projectId: value === "all" ? "" : value })}
+              value={filters.projectId || 'all'}
+              onValueChange={(value) => setFilters({ ...filters, projectId: value === 'all' ? '' : value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Todos" />
@@ -189,7 +193,6 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4 mb-6">
         <div className="stat-card">
           <div className="flex items-center gap-3">
@@ -241,7 +244,6 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Results Table */}
       {filteredData.projectData.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-8 w-8" />}
@@ -290,7 +292,6 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* Period Info */}
       <div className="mt-6 text-center text-sm text-muted-foreground">
         Período: {format(new Date(filters.startDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })} até{' '}
         {format(new Date(filters.endDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
