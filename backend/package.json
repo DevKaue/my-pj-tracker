@@ -13,14 +13,13 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "better-sqlite3": "^12.6.0",
     "cors": "^2.8.5",
     "express": "^5.2.1",
+    "firebase-admin": "^12.0.0",
     "swagger-ui-express": "^5.0.1",
     "zod": "^4.3.5"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.8",
