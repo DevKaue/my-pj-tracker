@@ -67,8 +67,9 @@ export default function ProjectsPage() {
         toast.success('Projeto criado!');
       }
       resetForm();
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao salvar projeto / Error saving project');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao salvar projeto / Error saving project';
+      toast.error(message);
     }
   };
 
@@ -93,8 +94,9 @@ export default function ProjectsPage() {
       try {
         await deleteProject.mutateAsync(id);
         toast.success('Projeto excluído!');
-      } catch (err: any) {
-        toast.error(err.message || 'Erro ao excluir projeto / Error deleting project');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Erro ao excluir projeto / Error deleting project';
+        toast.error(message);
       }
     }
   };

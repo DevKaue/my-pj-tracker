@@ -17,8 +17,8 @@ import { Button } from '@/components/ui/button';
 const BillingPage = () => {
   const { tasksQuery } = useTasks();
   const { projectsQuery } = useProjects();
-  const tasks = tasksQuery.data || [];
-  const projects = projectsQuery.data || [];
+  const tasks = useMemo(() => tasksQuery.data || [], [tasksQuery.data]);
+  const projects = useMemo(() => projectsQuery.data || [], [projectsQuery.data]);
 
   const monthlyRevenue = useMemo(() => {
     const revenue = new Map<string, number>();

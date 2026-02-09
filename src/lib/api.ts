@@ -1,3 +1,5 @@
+import type { Organization, Project, Task } from '@/types';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 export type OrgInput = {
@@ -25,14 +27,65 @@ export type TaskInput = {
   status: 'pending' | 'in_progress' | 'completed';
 };
 
+type OrganizationResponse = {
+  id: string;
+  name: string;
+  cnpj?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  createdAt?: string;
+  created_at?: string;
+};
+
+type ProjectResponse = {
+  id: string;
+  name: string;
+  description?: string | null;
+  organizationId?: string;
+  organization_id?: string;
+  hourlyRate?: number | string;
+  hourly_rate?: number | string;
+  status?: Project['status'];
+  createdAt?: string;
+  created_at?: string;
+};
+
+type TaskResponse = {
+  id: string;
+  title: string;
+  description?: string | null;
+  projectId?: string;
+  project_id?: string;
+  hours?: number | string;
+  date?: string;
+  dueDate?: string;
+  due_date?: string;
+  status?: Task['status'];
+  createdAt?: string;
+  created_at?: string;
+};
+
+const parseDate = (value?: string): Date => (value ? new Date(value) : new Date());
+
+const parseNumber = (value: number | string | undefined): number => {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return 0;
+};
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    const message = body?.message || res.statusText;
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    const message = typeof body.message === 'string' ? body.message : res.statusText;
     throw new Error(message);
   }
   if (res.status === 204) return undefined as T;
@@ -40,29 +93,53 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 // Helpers para converter datas em objetos Date
-const mapOrganization = (org: any) => ({ ...org, createdAt: new Date(org.createdAt) });
-const mapProject = (project: any) => ({ ...project, createdAt: new Date(project.createdAt) });
-  const mapTask = (task: any) => ({
-    ...task,
-    date: new Date(task.date),
-    dueDate: new Date(task.due_date ?? task.dueDate ?? task.date),
-    createdAt: new Date(task.createdAt),
-  });
+const mapOrganization = (org: OrganizationResponse): Organization => ({
+  id: org.id,
+  name: org.name,
+  cnpj: org.cnpj ?? undefined,
+  email: org.email ?? undefined,
+  phone: org.phone ?? undefined,
+  createdAt: parseDate(org.createdAt ?? org.created_at),
+});
+
+const mapProject = (project: ProjectResponse): Project => ({
+  id: project.id,
+  name: project.name,
+  description: project.description ?? undefined,
+  organizationId: project.organizationId ?? project.organization_id ?? '',
+  hourlyRate: parseNumber(project.hourlyRate ?? project.hourly_rate),
+  status: project.status ?? 'active',
+  createdAt: parseDate(project.createdAt ?? project.created_at),
+});
+
+const mapTask = (task: TaskResponse): Task => ({
+  id: task.id,
+  title: task.title,
+  description: task.description ?? undefined,
+  projectId: task.projectId ?? task.project_id ?? '',
+  hours: parseNumber(task.hours),
+  date: parseDate(task.date ?? task.createdAt ?? task.created_at),
+  dueDate: parseDate(
+    task.dueDate ?? task.due_date ?? task.date ?? task.createdAt ?? task.created_at,
+  ),
+  status: task.status ?? 'pending',
+  createdAt: parseDate(task.createdAt ?? task.created_at),
+});
 
 export const api = {
   async getOrganizations() {
-    const data = await request<any[]>('/organizations');
+    const data = await request<OrganizationResponse[]>('/organizations');
     return data.map(mapOrganization);
   },
   async createOrganization(payload: OrgInput) {
-    const data = await request<any>('/organizations', {
+    const data = await request<OrganizationResponse>('/organizations', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
     return mapOrganization(data);
   },
   async updateOrganization(id: string, payload: Partial<OrgInput>) {
-    const data = await request<any>(`/organizations/${id}`, {
+    const data = await request<OrganizationResponse>(`/organizations/${id}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
@@ -74,18 +151,18 @@ export const api = {
 
   async getProjects(organizationId?: string) {
     const query = organizationId ? `?organizationId=${organizationId}` : '';
-    const data = await request<any[]>(`/projects${query}`);
+    const data = await request<ProjectResponse[]>(`/projects${query}`);
     return data.map(mapProject);
   },
   async createProject(payload: ProjectInput) {
-    const data = await request<any>('/projects', {
+    const data = await request<ProjectResponse>('/projects', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
     return mapProject(data);
   },
   async updateProject(id: string, payload: Partial<ProjectInput>) {
-    const data = await request<any>(`/projects/${id}`, {
+    const data = await request<ProjectResponse>(`/projects/${id}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
@@ -100,12 +177,12 @@ export const api = {
     if (filters?.projectId) params.append('projectId', filters.projectId);
     if (filters?.organizationId) params.append('organizationId', filters.organizationId);
     const query = params.toString() ? `?${params.toString()}` : '';
-    const data = await request<any[]>(`/tasks${query}`);
+    const data = await request<TaskResponse[]>(`/tasks${query}`);
     return data.map(mapTask);
   },
   async createTask(payload: TaskInput) {
     const { dueDate, ...rest } = payload;
-    const data = await request<any>('/tasks', {
+    const data = await request<TaskResponse>('/tasks', {
       method: 'POST',
       body: JSON.stringify({
         ...rest,
@@ -116,14 +193,14 @@ export const api = {
     return mapTask(data);
   },
   async updateTask(id: string, payload: Partial<TaskInput>) {
-    const data = await request<any>(`/tasks/${id}`, {
-      method: 'PUT',
     const { dueDate, ...rest } = payload;
-    body: JSON.stringify({
-      ...rest,
-      date: payload.date ? new Date(payload.date).toISOString() : undefined,
-      due_date: dueDate ? new Date(dueDate).toISOString() : undefined,
-    }),
+    const data = await request<TaskResponse>(`/tasks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        ...rest,
+        date: payload.date ? new Date(payload.date).toISOString() : undefined,
+        due_date: dueDate ? new Date(dueDate).toISOString() : undefined,
+      }),
     });
     return mapTask(data);
   },

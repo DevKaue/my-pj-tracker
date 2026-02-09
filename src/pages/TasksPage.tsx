@@ -53,9 +53,9 @@ export default function TasksPage() {
     status: 'pending' as Task['status'],
   });
 
-  const organizations = organizationsQuery.data || [];
-  const projects = projectsQuery.data || [];
-  const tasks = tasksQuery.data || [];
+  const organizations = useMemo(() => organizationsQuery.data || [], [organizationsQuery.data]);
+  const projects = useMemo(() => projectsQuery.data || [], [projectsQuery.data]);
+  const tasks = useMemo(() => tasksQuery.data || [], [tasksQuery.data]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,8 +84,9 @@ export default function TasksPage() {
       }
 
       resetForm();
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao salvar tarefa / Error saving task');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao salvar tarefa / Error saving task';
+      toast.error(message);
     }
   };
 
@@ -108,8 +109,9 @@ export default function TasksPage() {
       try {
         await deleteTask.mutateAsync(id);
         toast.success('Tarefa excluída!');
-      } catch (err: any) {
-        toast.error(err.message || 'Erro ao excluir tarefa / Error deleting task');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Erro ao excluir tarefa / Error deleting task';
+        toast.error(message);
       }
     }
   };

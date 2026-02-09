@@ -12,9 +12,9 @@ const Index = () => {
   const { projectsQuery } = useProjects();
   const { tasksQuery } = useTasks();
 
-  const organizations = organizationsQuery.data || [];
-  const projects = projectsQuery.data || [];
-  const tasks = tasksQuery.data || [];
+  const organizations = useMemo(() => organizationsQuery.data || [], [organizationsQuery.data]);
+  const projects = useMemo(() => projectsQuery.data || [], [projectsQuery.data]);
+  const tasks = useMemo(() => tasksQuery.data || [], [tasksQuery.data]);
   const [showBillingValue, setShowBillingValue] = useState(true);
 
   const monthlyStats = useMemo(() => {

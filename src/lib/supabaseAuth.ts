@@ -33,6 +33,68 @@ export interface SupabaseSession {
 
 export type AuthErrorCode = "email_not_confirmed" | string;
 
+type MessageKeys = "message" | "msg" | "error_description" | "error";
+
+const parseJsonSafe = (value: string): unknown => {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return {};
+  }
+};
+
+const normalizeRecord = (value: unknown): Record<string, unknown> => {
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+};
+
+const normalizeArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+
+const getErrorMessageFromBody = (body: Record<string, unknown>): string | undefined => {
+  const keys: MessageKeys[] = ["message", "msg", "error_description", "error"];
+  for (const key of keys) {
+    const candidate = body[key];
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return candidate;
+    }
+  }
+  return undefined;
+};
+
+const getAuthErrorCodeFromBody = (body: Record<string, unknown>): AuthErrorCode | undefined => {
+  const value = body["error_code"];
+  return typeof value === "string" ? (value as AuthErrorCode) : undefined;
+};
+
+const toSupabaseUser = (value: unknown): SupabaseUser => {
+  if (typeof value !== "object" || value === null) {
+    return { id: "", email: null };
+  }
+  const record = value as Record<string, unknown>;
+  return {
+    id: typeof record.id === "string" ? record.id : "",
+    email: typeof record.email === "string" ? record.email : null,
+    phone: typeof record.phone === "string" ? record.phone : null,
+    user_metadata: normalizeRecord(record.user_metadata),
+    app_metadata: normalizeRecord(record.app_metadata),
+    ...record,
+  };
+};
+
+const buildSessionFromBody = (body: Record<string, unknown>): SupabaseSession => {
+  const expiresIn = typeof body.expires_in === "number" ? body.expires_in : 0;
+  return {
+    access_token: typeof body.access_token === "string" ? body.access_token : "",
+    refresh_token: typeof body.refresh_token === "string" ? body.refresh_token : "",
+    expires_in: expiresIn,
+    expires_at: Math.floor(Date.now() / 1000) + expiresIn,
+    token_type: typeof body.token_type === "string" ? body.token_type : "bearer",
+    user: toSupabaseUser(body.user),
+  };
+};
+
 const sessionEventTarget = new EventTarget();
 
 const baseHeaders = {
@@ -90,26 +152,13 @@ export async function resendEmailConfirmation(email: string) {
   });
 
   const raw = await response.text();
-  const body = raw
-    ? (() => {
-        try {
-          return JSON.parse(raw);
-        } catch {
-          return {};
-        }
-      })()
-    : {};
+  const parsed = raw ? parseJsonSafe(raw) : {};
+  const body = normalizeRecord(parsed);
 
   if (!response.ok) {
-    const msg =
-      (body as any)?.msg ||
-      (body as any)?.error_description ||
-      (body as any)?.error ||
-      response.statusText;
+    const message = getErrorMessageFromBody(body) ?? response.statusText;
     throw new SupabaseAuthError(
-      typeof msg === "string"
-        ? msg
-        : "Não foi possível reenviar a confirmação.",
+      message ?? "Não foi possível reenviar a confirmação.",
     );
   }
 }
@@ -174,20 +223,21 @@ export async function getEmailByDocument(document: string) {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    const message = (body as any)?.message || response.statusText;
+    const message = getErrorMessageFromBody(normalizeRecord(body)) ?? response.statusText;
     throw new Error(
-      typeof message === "string"
-        ? message
-        : "Não foi possível buscar o documento.",
+      message ?? "Não foi possível buscar o documento.",
     );
   }
 
-  const body = await response.json();
-  if (!Array.isArray(body) || body.length === 0 || !body[0]?.email) {
+  const body = await response.json().catch(() => []);
+  const rows = normalizeArray(body);
+  const firstRow = rows.length > 0 ? normalizeRecord(rows[0]) : {};
+  const email = typeof firstRow.email === "string" ? firstRow.email : undefined;
+  if (!email) {
     throw new Error("Nenhum cadastro encontrado para este CPF ou CNPJ.");
   }
 
-  return body[0].email as string;
+  return email;
 }
 
 export async function signUpWithDocument(
@@ -217,12 +267,12 @@ export async function signUpWithDocument(
     }),
   });
 
-  const body = await response.json().catch(() => ({}));
+  const rawBody = await response.json().catch(() => ({}));
+  const body = normalizeRecord(rawBody);
 
   if (!response.ok) {
     const message =
-      (body as any)?.error_description ||
-      (body as any)?.error ||
+      getErrorMessageFromBody(body) ??
       response.statusText;
     throw new Error(
       typeof message === "string"
@@ -231,14 +281,7 @@ export async function signUpWithDocument(
     );
   }
 
-  const session: SupabaseSession = {
-    access_token: (body as any).access_token,
-    refresh_token: (body as any).refresh_token,
-    expires_in: (body as any).expires_in,
-    expires_at: Math.floor(Date.now() / 1000) + (body as any).expires_in,
-    token_type: (body as any).token_type,
-    user: (body as any).user,
-  };
+  const session = buildSessionFromBody(body);
 
   await ensureProfileRow(session, digits, email.trim().toLowerCase());
 
@@ -264,24 +307,12 @@ export async function signInWithPassword(email: string, password: string) {
 
   // Supabase às vezes volta texto/HTML em erros, então é bom ser resiliente:
   const raw = await response.text();
-  const body = raw
-    ? (() => {
-        try {
-          return JSON.parse(raw);
-        } catch {
-          return {};
-        }
-      })()
-    : {};
+  const body = normalizeRecord(raw ? parseJsonSafe(raw) : {});
 
   if (!response.ok) {
-    const errorCode = (body as any)?.error_code as AuthErrorCode | undefined;
+    const errorCode = getAuthErrorCodeFromBody(body);
 
-    const message =
-      (body as any)?.error_description ||
-      (body as any)?.msg ||
-      (body as any)?.error ||
-      response.statusText;
+    const message = getErrorMessageFromBody(body) ?? response.statusText;
 
     if (errorCode === "email_not_confirmed") {
       throw new SupabaseAuthError(
@@ -296,14 +327,7 @@ export async function signInWithPassword(email: string, password: string) {
     );
   }
 
-  const session: SupabaseSession = {
-    access_token: (body as any).access_token,
-    refresh_token: (body as any).refresh_token,
-    expires_in: (body as any).expires_in,
-    expires_at: Math.floor(Date.now() / 1000) + (body as any).expires_in,
-    token_type: (body as any).token_type,
-    user: (body as any).user,
-  };
+  const session = buildSessionFromBody(body);
 
   persistSession(session);
   emitSession(session);
@@ -338,11 +362,9 @@ async function ensureProfileRow(
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    const message = (body as any)?.message || response.statusText;
+    const message = getErrorMessageFromBody(normalizeRecord(body)) ?? response.statusText;
     throw new Error(
-      typeof message === "string"
-        ? message
-        : "Não foi possível gravar o perfil.",
+      message ?? "Não foi possível gravar o perfil.",
     );
   }
 }
