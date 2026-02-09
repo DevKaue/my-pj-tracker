@@ -1,16 +1,24 @@
 ## Backend (API)
 
-### Rodar local
-```bash
+### PrÈ-requisitos
+1. Copie ackend/.env.example para ackend/.env e preencha SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY com as credenciais do seu projeto (Project Settings > API). Se quiser, ajuste tambÈm PORT.
+2. Dentro de ackend, rode 
+pm install.
+3. Configure o banco rodando:
+
+`ash
+supabase db query --file backend/scripts/create_tables.sql
+`
+
+4. ApÛs criar as tabelas, clique em Project Settings > Database > Settings > Reload schema cache.
+
+### Rodando localmente
+`ash
 cd backend
-npm install
 npm run dev
-```
-API em `http://localhost:4000` com Swagger UI em `/docs`.
+`
 
-### Deploy (recomenda√ß√£o)
-Use um host de Node com processo persistente (Render, Railway, Fly.io, etc.).
-- Sete `PORT` se o host exigir.
-- Mantenha o arquivo `data.sqlite` em volume/persist√™ncia do provedor ou troque por Postgres e ajuste o c√≥digo.
+O servidor fica disponÌvel em http://localhost:4000, com documentaÁ„o Swagger em /docs.
 
-> Observa√ß√£o: Vercel serverless n√£o mant√©m arquivo SQLite e n√£o roda processo persistente; n√£o √© recomendada para este backend sem reescrever para outro storage.
+### Deploy
+Use um provedor que suporte processos persistentes (Render, Railway, Fly.io etc.). Garanta que SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY e PORT estejam definidos no ambiente de execuÁ„o. Como os dados ficam no Supabase, n„o È necess·rio manter um arquivo SQLite.

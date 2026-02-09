@@ -1,75 +1,106 @@
 import { randomUUID } from "crypto";
-import { firestore } from "../firebase.js";
-import { mapOrg, mapProject, mapTask, createBatchWithLimit } from "./helpers.js";
+import { supabaseRequest } from "../firebase.js";
+import { mapOrgRow, mapProjectRow, mapTaskRow, safeRows } from "./helpers.js";
 import { Org, OrgData, Project, Task } from "../types.js";
 
 export async function listOrganizations(): Promise<Org[]> {
-  const snap = await firestore.collection("organizations").orderBy("createdAt", "desc").get();
-  return snap.docs.map(mapOrg).filter((item): item is Org => item !== null);
+  const rows = await supabaseRequest<Org[]>(`organizations`, {
+    params: { select: "*", order: "created_at.desc" },
+  });
+  return safeRows((rows ?? []).map(mapOrgRow));
 }
 
 export async function createOrganization(data: Omit<OrgData, "createdAt">): Promise<Org> {
   const id = randomUUID();
   const createdAt = new Date().toISOString();
-  await firestore.collection("organizations").doc(id).set({ ...data, createdAt });
-  const org = await firestore.collection("organizations").doc(id).get();
-  return mapOrg(org)!;
+  const payload = {
+    id,
+    name: data.name,
+    cnpj: data.cnpj ?? null,
+    email: data.email ?? null,
+    phone: data.phone ?? null,
+    created_at: createdAt,
+  };
+  const rows = await supabaseRequest<Org[]>(`organizations`, {
+    method: "POST",
+    body: payload,
+    headers: { Prefer: "return=representation" },
+  });
+  if (!rows || rows.length === 0) throw new Error("Não foi possível criar a organização.");
+  return mapOrgRow(rows[0])!;
 }
 
 export async function updateOrganization(id: string, data: Partial<OrgData>): Promise<Org | null> {
-  const docRef = firestore.collection("organizations").doc(id);
-  const existing = await docRef.get();
-  if (!existing.exists) return null;
-  await docRef.set({ ...(existing.data() as OrgData), ...data }, { merge: true });
-  const updated = await docRef.get();
-  return mapOrg(updated);
+  const payload = {
+    ...(data.name ? { name: data.name } : {}),
+    ...(data.cnpj !== undefined ? { cnpj: data.cnpj } : {}),
+    ...(data.email !== undefined ? { email: data.email } : {}),
+    ...(data.phone !== undefined ? { phone: data.phone } : {}),
+  };
+  const rows = await supabaseRequest<Org[]>(`organizations`, {
+    method: "PATCH",
+    body: payload,
+    params: { "id": `eq.${id}`, select: "*" },
+    headers: { Prefer: "return=representation" },
+  });
+  if (!rows || rows.length === 0) return null;
+  return mapOrgRow(rows[0]);
 }
 
 export async function deleteOrganizationCascade(orgId: string): Promise<boolean> {
-  const orgRef = firestore.collection("organizations").doc(orgId);
-  const org = await orgRef.get();
-  if (!org.exists) return false;
+  const rows = await supabaseRequest<Org[]>(`organizations`, {
+    params: { select: "id", "id": `eq.${orgId}` },
+  });
+  if (!rows || rows.length === 0) return false;
 
-  const { batch, batches, push, enqueueDelete } = createBatchWithLimit();
+  const projects = await supabaseRequest<Project[]>(`projects`, {
+    params: { select: "id", organization_id: `eq.${orgId}` },
+  });
+  const projectIds = (projects ?? []).map((row) => row.id).filter(Boolean);
 
-  const projectsSnap = await firestore.collection("projects").where("organizationId", "==", orgId).get();
-  for (const projectDoc of projectsSnap.docs) {
-    const tasksSnap = await firestore.collection("tasks").where("projectId", "==", projectDoc.id).get();
-    tasksSnap.forEach((task) => enqueueDelete(task.ref));
-    enqueueDelete(projectDoc.ref);
+  if (projectIds.length > 0) {
+    await supabaseRequest(`tasks`, {
+      method: "DELETE",
+      params: { project_id: `in.(${projectIds.join(",")})` },
+    });
   }
 
-  enqueueDelete(orgRef);
-  push();
+  await supabaseRequest(`projects`, {
+    method: "DELETE",
+    params: { organization_id: `eq.${orgId}` },
+  });
 
-  for (const b of batches) {
-    await b.commit();
-  }
-  await batch.commit();
+  await supabaseRequest(`organizations`, {
+    method: "DELETE",
+    params: { id: `eq.${orgId}` },
+  });
 
   return true;
 }
 
 export async function getOrganization(id: string): Promise<Org | null> {
-  const snap = await firestore.collection("organizations").doc(id).get();
-  return mapOrg(snap);
+  const rows = await supabaseRequest<Org[]>(`organizations`, {
+    params: { select: "*", id: `eq.${id}` },
+  });
+  if (!rows || rows.length === 0) return null;
+  return mapOrgRow(rows[0]);
 }
 
 export async function listProjectsByOrg(orgId: string): Promise<Project[]> {
-  const snap = await firestore.collection("projects").where("organizationId", "==", orgId).get();
-  return snap.docs.map(mapProject).filter((item): item is Project => item !== null);
+  const rows = await supabaseRequest<Project[]>(`projects`, {
+    params: { select: "*", organization_id: `eq.${orgId}`, order: "created_at.desc" },
+  });
+  return safeRows((rows ?? []).map(mapProjectRow));
 }
 
 export async function listTasksByProjectIds(projectIds: string[]): Promise<Task[]> {
-  const tasks: Task[] = [];
-  for (const pid of projectIds) {
-    const snap = await firestore
-      .collection("tasks")
-      .where("projectId", "==", pid)
-      .orderBy("date", "desc")
-      .orderBy("createdAt", "desc")
-      .get();
-    tasks.push(...snap.docs.map(mapTask).filter((item): item is Task => item !== null));
-  }
-  return tasks;
+  if (projectIds.length === 0) return [];
+  const rows = await supabaseRequest<Task[]>(`tasks`, {
+    params: {
+      select: "*",
+      "project_id": `in.(${projectIds.join(",")})`,
+      order: "date.desc",
+    },
+  });
+  return safeRows((rows ?? []).map(mapTaskRow));
 }

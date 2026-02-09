@@ -4,6 +4,27 @@
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
 
+## Supabase e autenticação
+
+Este projeto usa Supabase apenas para autenticar usuários via email + CPF/CNPJ. Antes de rodar a aplicação, sempre:
+
+1. Copie `.env.example` para `.env` e preencha `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` com as credenciais do dashboard (Project Settings > API). A variável `VITE_API_URL` é usada para o backend local e pode permanecer `http://localhost:4000`.
+2. Execute o SQL em `scripts/create_profiles_table.sql` no banco do novo projeto Supabase. Por exemplo:
+
+```bash
+supabase db query --file scripts/create_profiles_table.sql
+```
+
+3. Rode o seed para popular um CPF de exemplo (775.072.490-77). O comando pode ser:
+
+```bash
+supabase db query --file scripts/seed_profiles.sql
+```
+
+4. Após alterar tabelas ou políticas, recarregue o schema cache em `Project Settings > Database > Settings > Reload schema cache`.
+
+O `src/lib/supabaseAuth.ts` já tenta criar o registro em `profiles` sempre que alguém se cadastra, então novos usuários chegam automaticamente ao banco.
+
 ## How can I edit this code?
 
 There are several ways of editing your application.
