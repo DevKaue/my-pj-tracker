@@ -36,6 +36,21 @@ const parseResponse = async (response: Response) => {
   return text ? JSON.parse(text) : null;
 };
 
+type SupabaseErrorResponse = {
+  message?: string;
+};
+
+const extractSupabaseMessage = (payload: unknown): string | undefined => {
+  if (typeof payload !== "object" || payload === null) return undefined;
+  if ("message" in payload) {
+    const message = (payload as SupabaseErrorResponse).message;
+    if (typeof message === "string" && message.trim().length > 0) {
+      return message;
+    }
+  }
+  return undefined;
+};
+
 export async function supabaseRequest<T = unknown>(path: string, options: SupabaseRequestOptions = {}) {
   const query = buildQuery(options.params);
   const headers = {
@@ -52,7 +67,7 @@ export async function supabaseRequest<T = unknown>(path: string, options: Supaba
 
   const parsed = await parseResponse(response);
   if (!response.ok) {
-    const message = parsed && typeof parsed === "object" && "message" in parsed ? (parsed as any).message : response.statusText;
+    const message = extractSupabaseMessage(parsed) ?? response.statusText;
     throw new Error(typeof message === "string" ? message : "Erro na requisição Supabase.");
   }
 

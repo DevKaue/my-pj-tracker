@@ -75,8 +75,9 @@ export default function OrganizationsPage() {
       setFormData({ name: '', cnpj: '', email: '', phone: '' });
       setEditingOrg(null);
       setIsOpen(false);
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao salvar organização / Error saving organization');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao salvar organização / Error saving organization';
+      toast.error(message);
     }
   };
 
@@ -100,8 +101,9 @@ export default function OrganizationsPage() {
       try {
         await deleteOrganization.mutateAsync(id);
         toast.success('Organização excluída!');
-      } catch (err: any) {
-        toast.error(err.message || 'Erro ao excluir organização / Error deleting organization');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Erro ao excluir organização / Error deleting organization';
+        toast.error(message);
       }
     }
   };

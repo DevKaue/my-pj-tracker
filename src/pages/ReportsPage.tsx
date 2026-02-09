@@ -35,9 +35,9 @@ export default function ReportsPage() {
     projectId: '',
   });
 
-  const organizations = organizationsQuery.data || [];
-  const projects = projectsQuery.data || [];
-  const tasks = tasksQuery.data || [];
+  const organizations = useMemo(() => organizationsQuery.data || [], [organizationsQuery.data]);
+  const projects = useMemo(() => projectsQuery.data || [], [projectsQuery.data]);
+  const tasks = useMemo(() => tasksQuery.data || [], [tasksQuery.data]);
 
   const filteredData = useMemo(() => {
     const startDate = new Date(filters.startDate);
