@@ -21,6 +21,7 @@ export type TaskInput = {
   projectId: string;
   hours: number;
   date: string | Date;
+  dueDate: string | Date;
   status: 'pending' | 'in_progress' | 'completed';
 };
 
@@ -41,11 +42,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 // Helpers para converter datas em objetos Date
 const mapOrganization = (org: any) => ({ ...org, createdAt: new Date(org.createdAt) });
 const mapProject = (project: any) => ({ ...project, createdAt: new Date(project.createdAt) });
-const mapTask = (task: any) => ({
-  ...task,
-  date: new Date(task.date),
-  createdAt: new Date(task.createdAt),
-});
+  const mapTask = (task: any) => ({
+    ...task,
+    date: new Date(task.date),
+    dueDate: new Date(task.due_date ?? task.dueDate ?? task.date),
+    createdAt: new Date(task.createdAt),
+  });
 
 export const api = {
   async getOrganizations() {
@@ -102,16 +104,26 @@ export const api = {
     return data.map(mapTask);
   },
   async createTask(payload: TaskInput) {
+    const { dueDate, ...rest } = payload;
     const data = await request<any>('/tasks', {
       method: 'POST',
-      body: JSON.stringify({ ...payload, date: new Date(payload.date).toISOString() }),
+      body: JSON.stringify({
+        ...rest,
+        date: new Date(payload.date).toISOString(),
+        due_date: new Date(dueDate).toISOString(),
+      }),
     });
     return mapTask(data);
   },
   async updateTask(id: string, payload: Partial<TaskInput>) {
     const data = await request<any>(`/tasks/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ ...payload, date: payload.date ? new Date(payload.date).toISOString() : undefined }),
+    const { dueDate, ...rest } = payload;
+    body: JSON.stringify({
+      ...rest,
+      date: payload.date ? new Date(payload.date).toISOString() : undefined,
+      due_date: dueDate ? new Date(dueDate).toISOString() : undefined,
+    }),
     });
     return mapTask(data);
   },

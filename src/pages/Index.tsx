@@ -1,7 +1,7 @@
 import { StatCard } from '@/components/dashboard/StatCard';
 import { useOrganizations, useProjects, useTasks } from '@/hooks/useData';
-import { Clock, Building2, FolderKanban, DollarSign, TrendingUp, CheckCircle2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { AlertTriangle, Clock, Building2, Eye, EyeOff, FolderKanban, DollarSign, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { startOfMonth, endOfMonth, isWithinInterval, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
@@ -15,6 +15,7 @@ const Index = () => {
   const organizations = organizationsQuery.data || [];
   const projects = projectsQuery.data || [];
   const tasks = tasksQuery.data || [];
+  const [showBillingValue, setShowBillingValue] = useState(true);
 
   const monthlyStats = useMemo(() => {
     const now = new Date();
@@ -33,6 +34,18 @@ const Index = () => {
 
     return { totalHours, totalValue, completedTasks, totalTasks: monthlyTasks.length };
   }, [tasks, projects]);
+
+  const overdueTasks = useMemo(() => {
+    const now = new Date();
+    return tasks.filter(
+      (task) =>
+        task.status === 'late' || (task.status !== 'completed' && task.dueDate < now),
+    );
+  }, [tasks]);
+
+  const billingValueLabel = showBillingValue
+    ? `R$ ${monthlyStats.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+    : '••••••••••';
 
   const activeProjects = projects.filter((p) => p.status === 'active').length;
 
@@ -61,13 +74,33 @@ const Index = () => {
           icon={<Clock className="h-6 w-6" />}
           variant="primary"
         />
-        <StatCard
-          title="Faturamento"
-          value={`R$ ${monthlyStats.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-          subtitle="Previsão do mês"
-          icon={<DollarSign className="h-6 w-6" />}
-          variant="success"
-        />
+        <div className="relative">
+          <StatCard
+            title="Faturamento"
+            value={billingValueLabel}
+            subtitle="Previsão do mês"
+            icon={<DollarSign className="h-6 w-6" />}
+            variant="success"
+          />
+          <Button
+            size="xs"
+            variant="ghost"
+            className="absolute right-3 top-3 text-xs"
+            onClick={() => setShowBillingValue((prev) => !prev)}
+          >
+            {showBillingValue ? (
+              <>
+                <EyeOff className="h-3 w-3" />
+                <span>Ocultar</span>
+              </>
+            ) : (
+              <>
+                <Eye className="h-3 w-3" />
+                <span>Mostrar</span>
+              </>
+            )}
+          </Button>
+        </div>
         <StatCard
           title="Projetos ativos"
           value={activeProjects}
@@ -170,8 +203,53 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="mt-8 p-4 rounded-xl bg-primary/5 border border-primary/10">
-        <p className="text-sm text-center">
+      <div className="mt-8 space-y-4">
+        <div className="card-elevated border border-destructive/20 bg-destructive/5 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-destructive">Tarefas atrasadas</p>
+              <p className="text-sm text-muted-foreground">
+                {overdueTasks.length === 0
+                  ? 'Nenhuma tarefa em atraso no momento.'
+                  : `${overdueTasks.length} tarefa(s) precisando de atenção`}
+              </p>
+            </div>
+            <Link to="/tasks">
+              <Button variant="outline" size="sm" className="gap-1">
+                <AlertTriangle className="h-4 w-4" />
+                Ver todas
+              </Button>
+            </Link>
+          </div>
+          <div className="mt-5 space-y-3">
+            {overdueTasks.length === 0 ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-center text-sm text-destructive">
+                Por enquanto está tudo em dia.
+              </div>
+            ) : (
+              overdueTasks.slice(0, 4).map((task) => (
+                <div
+                  key={task.id}
+                  className="flex flex-col gap-1 rounded-lg border border-destructive/30 bg-white/80 px-4 py-3 shadow-sm"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium text-destructive">{task.title}</p>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-destructive">
+                      {getProjectName(task.projectId)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Data de entrega: {format(new Date(task.dueDate), 'dd/MM/yyyy', { locale: ptBR })}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Status atual: {task.status.replace('_', ' ')}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+          <p className="text-sm text-center">
           💡 <span className="font-medium">Dica:</span> Comece criando uma{' '}
           <Link to="/organizations" className="text-primary hover:underline">
             organização
@@ -185,7 +263,8 @@ const Index = () => {
             tarefas
           </Link>{' '}
           diariamente para relatórios precisos.
-        </p>
+          </p>
+        </div>
       </div>
     </div>
   );

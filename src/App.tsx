@@ -9,6 +9,7 @@ import OrganizationsPage from "./pages/OrganizationsPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import TasksPage from "./pages/TasksPage";
 import ReportsPage from "./pages/ReportsPage";
+import BillingPage from "./pages/BillingPage";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/Login";
 import { useAuth } from "@/hooks/useAuth";
@@ -58,6 +59,7 @@ const App = () => (
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/billing" element={<BillingPage />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
