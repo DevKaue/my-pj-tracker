@@ -21,5 +21,6 @@ export const taskSchema = z.object({
   projectId: z.string().min(1),
   hours: z.number().nonnegative(),
   date: z.string().transform((val) => new Date(val).toISOString()),
+  dueDate: z.string().transform((val) => new Date(val).toISOString()),
   status: z.enum(["pending", "in_progress", "completed"]),
 });

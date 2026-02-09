@@ -21,6 +21,7 @@ export type TaskData = {
   projectId: string;
   hours: number;
   date: string;
+  dueDate: string;
   status: "pending" | "in_progress" | "completed";
   createdAt: string;
 };
