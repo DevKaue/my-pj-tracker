@@ -48,6 +48,7 @@ export async function createTask(data: Omit<TaskData, "createdAt">): Promise<Tas
     project_id: data.projectId,
     hours: data.hours,
     date: data.date,
+    due_date: data.dueDate,
     status: data.status,
     created_at: createdAt,
   };
@@ -68,6 +69,7 @@ export async function updateTask(id: string, data: Partial<TaskData>): Promise<T
   if (data.hours !== undefined) payload.hours = data.hours;
   if (data.date !== undefined) payload.date = data.date;
   if (data.status !== undefined) payload.status = data.status;
+  if (data.dueDate !== undefined) payload.due_date = data.dueDate;
   const rows = await supabaseRequest<Task[]>(`tasks`, {
     method: "PATCH",
     body: payload,

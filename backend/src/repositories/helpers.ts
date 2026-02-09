@@ -41,6 +41,7 @@ export const mapTaskRow = (
     project_id?: string;
     hours?: number | string | null;
     date?: string | null;
+    due_date?: string | null;
     created_at?: string | null;
   },
 ): Task | null => {
@@ -53,6 +54,7 @@ export const mapTaskRow = (
     projectId: row.project_id ?? row.projectId ?? "",
     hours,
     date: row.date ?? row.createdAt ?? new Date().toISOString(),
+    dueDate: row.due_date ?? row.dueDate ?? row.date ?? row.createdAt ?? new Date().toISOString(),
     status: row.status ?? "pending",
     createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
   };
