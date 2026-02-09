@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
-import { firestore } from "../firebase.js";
-import { mapTask } from "./helpers.js";
-import { Task, TaskData } from "../types.js";
+import { supabaseRequest } from "../firebase.js";
+import { mapTaskRow, safeRows } from "./helpers.js";
+import { Project, Task, TaskData } from "../types.js";
 
 type TaskFilters = { projectId?: string; organizationId?: string };
 
@@ -9,58 +9,83 @@ export async function listTasks(filters?: TaskFilters): Promise<Task[]> {
   const { projectId, organizationId } = filters || {};
 
   if (projectId) {
-    const snap = await firestore
-      .collection("tasks")
-      .where("projectId", "==", projectId)
-      .orderBy("date", "desc")
-      .orderBy("createdAt", "desc")
-      .get();
-    return snap.docs.map(mapTask).filter((item): item is Task => item !== null);
+    const rows = await supabaseRequest<Task[]>(`tasks`, {
+      params: { select: "*", project_id: `eq.${projectId}`, order: "date.desc" },
+    });
+    return safeRows((rows ?? []).map(mapTaskRow));
   }
 
   if (organizationId) {
-    const projectsSnap = await firestore.collection("projects").where("organizationId", "==", organizationId).get();
-    const projectIds = projectsSnap.docs.map((doc) => doc.id);
-    const tasks: Task[] = [];
-    for (const pid of projectIds) {
-      const snap = await firestore
-        .collection("tasks")
-        .where("projectId", "==", pid)
-        .orderBy("date", "desc")
-        .orderBy("createdAt", "desc")
-        .get();
-      tasks.push(...snap.docs.map(mapTask).filter((item): item is Task => item !== null));
-    }
-    tasks.sort((a, b) => (b.date > a.date ? 1 : -1));
-    return tasks;
+    const projects = await supabaseRequest<Project[]>(`projects`, {
+      params: { select: "id", organization_id: `eq.${organizationId}` },
+    });
+    const projectIds = (projects ?? []).map((row) => row.id).filter(Boolean);
+    if (projectIds.length === 0) return [];
+
+    const rows = await supabaseRequest<Task[]>(`tasks`, {
+      params: {
+        select: "*",
+        "project_id": `in.(${projectIds.join(",")})`,
+        order: "date.desc",
+      },
+    });
+    return safeRows((rows ?? []).map(mapTaskRow));
   }
 
-  const snap = await firestore.collection("tasks").orderBy("date", "desc").orderBy("createdAt", "desc").get();
-  return snap.docs.map(mapTask).filter((item): item is Task => item !== null);
+  const rows = await supabaseRequest<Task[]>(`tasks`, {
+    params: { select: "*", order: "date.desc" },
+  });
+  return safeRows((rows ?? []).map(mapTaskRow));
 }
 
 export async function createTask(data: Omit<TaskData, "createdAt">): Promise<Task> {
   const id = randomUUID();
   const createdAt = new Date().toISOString();
-  const payload: TaskData = { ...data, createdAt };
-  await firestore.collection("tasks").doc(id).set(payload);
-  const task = await firestore.collection("tasks").doc(id).get();
-  return mapTask(task)!;
+  const payload = {
+    id,
+    title: data.title,
+    description: data.description ?? null,
+    project_id: data.projectId,
+    hours: data.hours,
+    date: data.date,
+    status: data.status,
+    created_at: createdAt,
+  };
+  const rows = await supabaseRequest<Task[]>(`tasks`, {
+    method: "POST",
+    body: payload,
+    headers: { Prefer: "return=representation" },
+  });
+  if (!rows || rows.length === 0) throw new Error("Não foi possível criar a tarefa.");
+  return mapTaskRow(rows[0])!;
 }
 
 export async function updateTask(id: string, data: Partial<TaskData>): Promise<Task | null> {
-  const docRef = firestore.collection("tasks").doc(id);
-  const existing = await docRef.get();
-  if (!existing.exists) return null;
-  await docRef.set({ ...(existing.data() as TaskData), ...data }, { merge: true });
-  const task = await docRef.get();
-  return mapTask(task);
+  const payload: Record<string, unknown> = {};
+  if (data.title !== undefined) payload.title = data.title;
+  if (data.description !== undefined) payload.description = data.description;
+  if (data.projectId !== undefined) payload.project_id = data.projectId;
+  if (data.hours !== undefined) payload.hours = data.hours;
+  if (data.date !== undefined) payload.date = data.date;
+  if (data.status !== undefined) payload.status = data.status;
+  const rows = await supabaseRequest<Task[]>(`tasks`, {
+    method: "PATCH",
+    body: payload,
+    params: { id: `eq.${id}`, select: "*" },
+    headers: { Prefer: "return=representation" },
+  });
+  if (!rows || rows.length === 0) return null;
+  return mapTaskRow(rows[0]);
 }
 
 export async function deleteTask(id: string): Promise<boolean> {
-  const docRef = firestore.collection("tasks").doc(id);
-  const existing = await docRef.get();
-  if (!existing.exists) return false;
-  await docRef.delete();
+  const rows = await supabaseRequest<Task[]>(`tasks`, {
+    params: { select: "id", id: `eq.${id}` },
+  });
+  if (!rows || rows.length === 0) return false;
+  await supabaseRequest(`tasks`, {
+    method: "DELETE",
+    params: { id: `eq.${id}` },
+  });
   return true;
 }

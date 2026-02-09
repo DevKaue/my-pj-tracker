@@ -1,42 +1,61 @@
-import { firestore } from "../firebase.js";
-import { Org, OrgData, Project, ProjectData, Task, TaskData } from "../types.js";
+import { Org, OrgData, Project, ProjectData, Task, TaskData, notNull } from "../types.js";
 
-export const mapOrg = (doc: FirebaseFirestore.DocumentSnapshot<FirebaseFirestore.DocumentData>): Org | null => {
-  const data = doc.data() as OrgData | undefined;
-  if (!data) return null;
-  return { id: doc.id, ...data };
-};
+const ensureString = (value: unknown) => (typeof value === "string" ? value : "");
 
-export const mapProject = (doc: FirebaseFirestore.DocumentSnapshot<FirebaseFirestore.DocumentData>): Project | null => {
-  const data = doc.data() as ProjectData | undefined;
-  if (!data) return null;
-  return { id: doc.id, ...data };
-};
-
-export const mapTask = (doc: FirebaseFirestore.DocumentSnapshot<FirebaseFirestore.DocumentData>): Task | null => {
-  const data = doc.data() as TaskData | undefined;
-  if (!data) return null;
-  return { id: doc.id, ...data };
-};
-
-export const createBatchWithLimit = () => {
-  let batch = firestore.batch();
-  let ops = 0;
-  const batches: FirebaseFirestore.WriteBatch[] = [];
-
-  const push = () => {
-    if (ops > 0) {
-      batches.push(batch);
-      batch = firestore.batch();
-      ops = 0;
-    }
+export const mapOrgRow = (row: Partial<OrgData> & { id?: string; created_at?: string | null }): Org | null => {
+  if (!row?.id) return null;
+  return {
+    id: row.id,
+    name: ensureString(row.name),
+    cnpj: row.cnpj ?? null,
+    email: row.email ?? null,
+    phone: row.phone ?? null,
+    createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
   };
-
-  const enqueueDelete = (ref: FirebaseFirestore.DocumentReference) => {
-    batch.delete(ref);
-    ops += 1;
-    if (ops >= 450) push();
-  };
-
-  return { batch, batches, push, enqueueDelete };
 };
+
+export const mapProjectRow = (
+  row: Partial<ProjectData> & {
+    id?: string;
+    organization_id?: string;
+    hourly_rate?: number | string | null;
+    created_at?: string | null;
+  },
+): Project | null => {
+  if (!row?.id) return null;
+  const hourlyRate = typeof row.hourly_rate === "string" ? parseFloat(row.hourly_rate) : row.hourly_rate ?? 0;
+  return {
+    id: row.id,
+    name: ensureString(row.name),
+    description: row.description ?? null,
+    organizationId: row.organization_id ?? row.organizationId ?? "",
+    hourlyRate,
+    status: row.status ?? "active",
+    createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
+  };
+};
+
+export const mapTaskRow = (
+  row: Partial<TaskData> & {
+    id?: string;
+    project_id?: string;
+    hours?: number | string | null;
+    date?: string | null;
+    created_at?: string | null;
+  },
+): Task | null => {
+  if (!row?.id) return null;
+  const hours = typeof row.hours === "string" ? parseFloat(row.hours) : row.hours ?? 0;
+  return {
+    id: row.id,
+    title: ensureString(row.title),
+    description: row.description ?? null,
+    projectId: row.project_id ?? row.projectId ?? "",
+    hours,
+    date: row.date ?? row.createdAt ?? new Date().toISOString(),
+    status: row.status ?? "pending",
+    createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
+  };
+};
+
+export const safeRows = <T>(rows: (T | null | undefined)[]): T[] => rows.filter((item): item is T => item != null);

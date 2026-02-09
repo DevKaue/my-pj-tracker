@@ -1,56 +1,78 @@
 import { randomUUID } from "crypto";
-import { firestore } from "../firebase.js";
-import { createBatchWithLimit, mapProject } from "./helpers.js";
+import { supabaseRequest } from "../firebase.js";
+import { mapProjectRow, safeRows } from "./helpers.js";
 import { Project, ProjectData } from "../types.js";
 
 export async function listProjects(organizationId?: string): Promise<Project[]> {
-  let query: FirebaseFirestore.Query = firestore.collection("projects");
+  const params: Record<string, string> = { select: "*", order: "created_at.desc" };
   if (organizationId) {
-    query = query.where("organizationId", "==", organizationId);
+    params.organization_id = `eq.${organizationId}`;
   }
-  const snap = await query.orderBy("createdAt", "desc").get();
-  return snap.docs.map(mapProject).filter((item): item is Project => item !== null);
+  const rows = await supabaseRequest<Project[]>(`projects`, { params });
+  return safeRows((rows ?? []).map(mapProjectRow));
 }
 
 export async function createProject(data: Omit<ProjectData, "createdAt">): Promise<Project> {
   const id = randomUUID();
   const createdAt = new Date().toISOString();
-  await firestore.collection("projects").doc(id).set({ ...data, createdAt });
-  const project = await firestore.collection("projects").doc(id).get();
-  return mapProject(project)!;
+  const payload = {
+    id,
+    name: data.name,
+    description: data.description ?? null,
+    organization_id: data.organizationId,
+    hourly_rate: data.hourlyRate,
+    status: data.status,
+    created_at: createdAt,
+  };
+  const rows = await supabaseRequest<Project[]>(`projects`, {
+    method: "POST",
+    body: payload,
+    headers: { Prefer: "return=representation" },
+  });
+  if (!rows || rows.length === 0) throw new Error("Não foi possível criar o projeto.");
+  return mapProjectRow(rows[0])!;
 }
 
 export async function updateProject(id: string, data: Partial<ProjectData>): Promise<Project | null> {
-  const docRef = firestore.collection("projects").doc(id);
-  const existing = await docRef.get();
-  if (!existing.exists) return null;
-  await docRef.set({ ...(existing.data() as ProjectData), ...data }, { merge: true });
-  const project = await docRef.get();
-  return mapProject(project);
+  const payload: Record<string, unknown> = {};
+  if (data.name !== undefined) payload.name = data.name;
+  if (data.description !== undefined) payload.description = data.description;
+  if (data.organizationId !== undefined) payload.organization_id = data.organizationId;
+  if (data.hourlyRate !== undefined) payload.hourly_rate = data.hourlyRate;
+  if (data.status !== undefined) payload.status = data.status;
+  const rows = await supabaseRequest<Project[]>(`projects`, {
+    method: "PATCH",
+    body: payload,
+    params: { id: `eq.${id}`, select: "*" },
+    headers: { Prefer: "return=representation" },
+  });
+  if (!rows || rows.length === 0) return null;
+  return mapProjectRow(rows[0]);
 }
 
 export async function deleteProjectCascade(projectId: string): Promise<boolean> {
-  const projectRef = firestore.collection("projects").doc(projectId);
-  const project = await projectRef.get();
-  if (!project.exists) return false;
+  const rows = await supabaseRequest<Project[]>(`projects`, {
+    params: { select: "id", id: `eq.${projectId}` },
+  });
+  if (!rows || rows.length === 0) return false;
 
-  const { batch, batches, push, enqueueDelete } = createBatchWithLimit();
+  await supabaseRequest(`tasks`, {
+    method: "DELETE",
+    params: { project_id: `eq.${projectId}` },
+  });
 
-  const tasksSnap = await firestore.collection("tasks").where("projectId", "==", projectId).get();
-  tasksSnap.forEach((doc) => enqueueDelete(doc.ref));
-
-  enqueueDelete(projectRef);
-  push();
-
-  for (const b of batches) {
-    await b.commit();
-  }
-  await batch.commit();
+  await supabaseRequest(`projects`, {
+    method: "DELETE",
+    params: { id: `eq.${projectId}` },
+  });
 
   return true;
 }
 
 export async function getProject(id: string): Promise<Project | null> {
-  const snap = await firestore.collection("projects").doc(id).get();
-  return mapProject(snap);
+  const rows = await supabaseRequest<Project[]>(`projects`, {
+    params: { select: "*", id: `eq.${id}` },
+  });
+  if (!rows || rows.length === 0) return null;
+  return mapProjectRow(rows[0]);
 }
