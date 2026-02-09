@@ -49,6 +49,7 @@ export default function TasksPage() {
     projectId: '',
     hours: '',
     date: format(new Date(), 'yyyy-MM-dd'),
+    dueDate: format(new Date(), 'yyyy-MM-dd'),
     status: 'pending' as Task['status'],
   });
 
@@ -69,6 +70,7 @@ export default function TasksPage() {
       projectId: formData.projectId,
       hours: parseFloat(formData.hours) || 0,
       date: new Date(formData.date),
+      dueDate: new Date(formData.dueDate),
       status: formData.status,
     };
 
@@ -95,6 +97,7 @@ export default function TasksPage() {
       projectId: task.projectId,
       hours: task.hours.toString(),
       date: format(new Date(task.date), 'yyyy-MM-dd'),
+      dueDate: format(new Date(task.dueDate), 'yyyy-MM-dd'),
       status: task.status,
     });
     setIsOpen(true);
@@ -118,6 +121,7 @@ export default function TasksPage() {
       projectId: '',
       hours: '',
       date: format(new Date(), 'yyyy-MM-dd'),
+      dueDate: format(new Date(), 'yyyy-MM-dd'),
       status: 'pending',
     });
     setEditingTask(null);
@@ -220,6 +224,18 @@ export default function TasksPage() {
                         onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                       />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="due-date">Data de entrega</Label>
+                    <Input
+                      id="due-date"
+                      type="date"
+                      value={formData.dueDate}
+                      onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      A tarefa será marcada como atrasada se não estiver concluída após esta data.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="status">Status</Label>

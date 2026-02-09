@@ -24,7 +24,8 @@ export interface Task {
   projectId: string;
   hours: number;
   date: Date;
-  status: 'pending' | 'in_progress' | 'completed';
+  dueDate: Date;
+  status: 'pending' | 'in_progress' | 'completed' | 'late';
   createdAt: Date;
 }
 
