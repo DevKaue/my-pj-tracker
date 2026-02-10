@@ -2,7 +2,7 @@ import { Org, OrgData, Project, ProjectData, Task, TaskData, notNull } from "../
 
 const ensureString = (value: unknown) => (typeof value === "string" ? value : "");
 
-export const mapOrgRow = (row: Partial<OrgData> & { id?: string; created_at?: string | null }): Org | null => {
+export const mapOrgRow = (row: Partial<OrgData> & { id?: string; created_at?: string | null; created_by?: string | null }): Org | null => {
   if (!row?.id) return null;
   return {
     id: row.id,
@@ -11,6 +11,7 @@ export const mapOrgRow = (row: Partial<OrgData> & { id?: string; created_at?: st
     email: row.email ?? null,
     phone: row.phone ?? null,
     createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
+    createdBy: row.created_by ?? row.createdBy ?? null,
   };
 };
 
@@ -20,6 +21,7 @@ export const mapProjectRow = (
     organization_id?: string;
     hourly_rate?: number | string | null;
     created_at?: string | null;
+    created_by?: string | null;
   },
 ): Project | null => {
   if (!row?.id) return null;
@@ -32,6 +34,7 @@ export const mapProjectRow = (
     hourlyRate,
     status: row.status ?? "active",
     createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
+    createdBy: row.created_by ?? row.createdBy ?? null,
   };
 };
 
@@ -43,20 +46,30 @@ export const mapTaskRow = (
     date?: string | null;
     due_date?: string | null;
     created_at?: string | null;
+    created_by?: string | null;
   },
 ): Task | null => {
   if (!row?.id) return null;
   const hours = typeof row.hours === "string" ? parseFloat(row.hours) : row.hours ?? 0;
+  const createdAtValue = row.created_at ?? row.createdAt ?? new Date().toISOString();
+  const dateValue = row.date ?? createdAtValue;
+  const dueDateValue = row.due_date ?? row.dueDate ?? dateValue;
+  const statusValue = row.status ?? "pending";
+  const parsedDueDate = new Date(dueDateValue);
+  const isOverdue =
+    statusValue !== "completed" && parsedDueDate.getTime() < Date.now();
+
   return {
     id: row.id,
     title: ensureString(row.title),
     description: row.description ?? null,
     projectId: row.project_id ?? row.projectId ?? "",
     hours,
-    date: row.date ?? row.createdAt ?? new Date().toISOString(),
-    dueDate: row.due_date ?? row.dueDate ?? row.date ?? row.createdAt ?? new Date().toISOString(),
-    status: row.status ?? "pending",
-    createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
+    date: dateValue,
+    dueDate: dueDateValue,
+    status: isOverdue ? "late" : statusValue,
+    createdAt: createdAtValue,
+    createdBy: row.created_by ?? row.createdBy ?? null,
   };
 };
 

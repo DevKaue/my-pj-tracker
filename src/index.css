@@ -180,6 +180,10 @@
   .badge-completed {
     @apply bg-primary/10 text-primary;
   }
+ 
+  .badge-late {
+    @apply bg-destructive/10 text-destructive;
+  }
 }
 
 @layer utilities {

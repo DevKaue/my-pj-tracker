@@ -3,16 +3,20 @@ import { supabaseRequest } from "../firebase.js";
 import { mapProjectRow, safeRows } from "./helpers.js";
 import { Project, ProjectData } from "../types.js";
 
-export async function listProjects(organizationId?: string): Promise<Project[]> {
-  const params: Record<string, string> = { select: "*", order: "created_at.desc" };
-  if (organizationId) {
-    params.organization_id = `eq.${organizationId}`;
-  }
+const buildProjectParams = (userId: string, overrides?: Record<string, string>) => ({
+  select: "*",
+  order: "created_at.desc",
+  created_by: `eq.${userId}`,
+  ...overrides,
+});
+
+export async function listProjects(userId: string, organizationId?: string): Promise<Project[]> {
+  const params = buildProjectParams(userId, organizationId ? { organization_id: `eq.${organizationId}` } : undefined);
   const rows = await supabaseRequest<Project[]>(`projects`, { params });
   return safeRows((rows ?? []).map(mapProjectRow));
 }
 
-export async function createProject(data: Omit<ProjectData, "createdAt">): Promise<Project> {
+export async function createProject(data: Omit<ProjectData, "createdAt">, userId: string): Promise<Project> {
   const id = randomUUID();
   const createdAt = new Date().toISOString();
   const payload = {
@@ -22,6 +26,7 @@ export async function createProject(data: Omit<ProjectData, "createdAt">): Promi
     organization_id: data.organizationId,
     hourly_rate: data.hourlyRate,
     status: data.status,
+    created_by: userId,
     created_at: createdAt,
   };
   const rows = await supabaseRequest<Project[]>(`projects`, {
@@ -33,7 +38,7 @@ export async function createProject(data: Omit<ProjectData, "createdAt">): Promi
   return mapProjectRow(rows[0])!;
 }
 
-export async function updateProject(id: string, data: Partial<ProjectData>): Promise<Project | null> {
+export async function updateProject(id: string, data: Partial<ProjectData>, userId: string): Promise<Project | null> {
   const payload: Record<string, unknown> = {};
   if (data.name !== undefined) payload.name = data.name;
   if (data.description !== undefined) payload.description = data.description;
@@ -43,35 +48,38 @@ export async function updateProject(id: string, data: Partial<ProjectData>): Pro
   const rows = await supabaseRequest<Project[]>(`projects`, {
     method: "PATCH",
     body: payload,
-    params: { id: `eq.${id}`, select: "*" },
+    params: {
+      ...buildProjectParams(userId, { id: `eq.${id}` }),
+      select: "*",
+    },
     headers: { Prefer: "return=representation" },
   });
   if (!rows || rows.length === 0) return null;
   return mapProjectRow(rows[0]);
 }
 
-export async function deleteProjectCascade(projectId: string): Promise<boolean> {
+export async function deleteProjectCascade(projectId: string, userId: string): Promise<boolean> {
   const rows = await supabaseRequest<Project[]>(`projects`, {
-    params: { select: "id", id: `eq.${projectId}` },
+    params: buildProjectParams(userId, { select: "id", id: `eq.${projectId}` }),
   });
   if (!rows || rows.length === 0) return false;
 
   await supabaseRequest(`tasks`, {
     method: "DELETE",
-    params: { project_id: `eq.${projectId}` },
+    params: { created_by: `eq.${userId}`, project_id: `eq.${projectId}` },
   });
 
   await supabaseRequest(`projects`, {
     method: "DELETE",
-    params: { id: `eq.${projectId}` },
+    params: buildProjectParams(userId, { id: `eq.${projectId}` }),
   });
 
   return true;
 }
 
-export async function getProject(id: string): Promise<Project | null> {
+export async function getProject(id: string, userId: string): Promise<Project | null> {
   const rows = await supabaseRequest<Project[]>(`projects`, {
-    params: { select: "*", id: `eq.${id}` },
+    params: buildProjectParams(userId, { select: "*", id: `eq.${id}` }),
   });
   if (!rows || rows.length === 0) return null;
   return mapProjectRow(rows[0]);

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -13,12 +13,14 @@ import {
 import { useProjects, useTasks } from '@/hooks/useData';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
+import { Eye, EyeOff } from 'lucide-react';
 
 const BillingPage = () => {
   const { tasksQuery } = useTasks();
   const { projectsQuery } = useProjects();
   const tasks = useMemo(() => tasksQuery.data || [], [tasksQuery.data]);
   const projects = useMemo(() => projectsQuery.data || [], [projectsQuery.data]);
+  const [showValues, setShowValues] = useState(true);
 
   const monthlyRevenue = useMemo(() => {
     const revenue = new Map<string, number>();
@@ -39,31 +41,61 @@ const BillingPage = () => {
   }, [projects, tasks]);
 
   const totalRevenue = monthlyRevenue.reduce((sum, item) => sum + item.value, 0);
+  const formattedTotalRevenue = showValues
+    ? `R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+    : '••••';
+  const topProjects = useMemo(() => {
+    const revenueMap = new Map<string, { name: string; value: number }>();
+    tasks.forEach((task) => {
+      const project = projects.find((p) => p.id === task.projectId);
+      if (!project) return;
+      const key = project.id;
+      const current = revenueMap.get(key) ?? { name: project.name, value: 0 };
+      current.value += project.hourlyRate * task.hours;
+      revenueMap.set(key, current);
+    });
+    return Array.from(revenueMap.values())
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 3);
+  }, [projects, tasks]);
 
   return (
     <div className="animate-fade-in space-y-6">
       <PageHeader
         title="Faturamento"
-        description="Acompanhe a previsão de receitas e exporte informações para seu financeiro."
+        description="Acompanhe a previsÃ£o de receitas e exporte informaÃ§Ãµes para seu financeiro."
         action={
-          <Button variant="outline" className="gap-2">
-            Exportar CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2">
+              Exportar CSV
+            </Button>
+            <Button size="sm" variant="ghost" className="gap-2" onClick={() => setShowValues((prev) => !prev)}>
+              {showValues ? (
+                <>
+                  <EyeOff className="h-4 w-4" />
+                  Ocultar valores
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4" />
+                  Mostrar valores
+                </>
+              )}
+            </Button>
+          </div>
         }
       />
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="card-elevated border border-border p-4">
-          <p className="text-sm text-muted-foreground">Últimos 6 meses</p>
-          <p className="text-3xl font-bold text-foreground">
-            R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </p>
-          <p className="text-xs text-muted-foreground">Média mensal</p>
+          <p className="text-sm text-muted-foreground">Ãšltimos 6 meses</p>
+          <p className="text-3xl font-bold text-foreground">{formattedTotalRevenue}</p>
+          <p className="text-xs text-muted-foreground">MÃ©dia mensal</p>
         </div>
         <div className="card-elevated border border-border p-4">
           <p className="text-sm text-muted-foreground">Projetos faturados</p>
           <p className="text-3xl font-bold text-foreground">{projects.length}</p>
-          <p className="text-xs text-muted-foreground">Projetos com tarefas faturáveis</p>
+          <p className="text-xs text-muted-foreground">Projetos com tarefas faturÃ¡veis</p>
         </div>
         <div className="card-elevated border border-border p-4">
           <p className="text-sm text-muted-foreground">Tarefas registradas</p>
@@ -75,12 +107,12 @@ const BillingPage = () => {
       <div className="card-elevated p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <p className="text-lg font-semibold text-foreground">Previsão mensal</p>
-            <p className="text-xs text-muted-foreground">Valores baseados nas horas registradas e nos valores por hora</p>
+            <p className="text-lg font-semibold text-foreground">PrevisÃ£o mensal</p>
+            <p className="text-xs text-muted-foreground">
+              Valores baseados nas horas registradas e nos valores por hora
+            </p>
           </div>
-          <div className="text-right text-xs text-muted-foreground">
-            Últimos {monthlyRevenue.length} meses
-          </div>
+          <div className="text-right text-xs text-muted-foreground">Ãšltimos {monthlyRevenue.length} meses</div>
         </div>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -99,9 +131,40 @@ const BillingPage = () => {
                   [`R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Faturamento']
                 }
               />
-              <Area type="monotone" dataKey="value" stroke="#0ea5e9" strokeWidth={2} fill="url(#colorRevenue)" />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="#0ea5e9"
+                strokeWidth={2}
+                fill="url(#colorRevenue)"
+              />
             </AreaChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="card-elevated border border-border p-6">
+        <div className="mb-4">
+          <p className="text-lg font-semibold text-foreground">Controle de faturamento</p>
+          <p className="text-xs text-muted-foreground">Ranking dos projetos com maior previsÃ£o</p>
+        </div>
+        <div className="space-y-3">
+          {topProjects.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Ainda nÃ£o hÃ¡ faturamento registrado. Registre tarefas para ver os valores por projeto.
+            </p>
+          ) : (
+            topProjects.map((project) => (
+              <div key={project.name} className="flex items-center justify-between">
+                <p className="text-sm font-medium text-foreground">{project.name}</p>
+                <p className="text-sm font-semibold text-foreground">
+                  {showValues
+                    ? `R$ ${project.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                    : '••••'}
+                </p>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -109,3 +172,4 @@ const BillingPage = () => {
 };
 
 export default BillingPage;
+

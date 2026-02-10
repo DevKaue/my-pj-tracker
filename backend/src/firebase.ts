@@ -1,5 +1,6 @@
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export const SERVICE_ROLE_KEY = SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error("SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY precisam estar definidos no backend.");
@@ -7,6 +8,8 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 
 const BASE_URL = SUPABASE_URL.replace(/\/$/, "");
 const REST_URL = `${BASE_URL}/rest/v1`;
+export const AUTH_URL = `${BASE_URL}/auth/v1`;
+
 
 const defaultHeaders = {
   apikey: SUPABASE_SERVICE_ROLE_KEY,

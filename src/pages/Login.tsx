@@ -15,6 +15,7 @@ import {
   normalizeDocument,
   isDocumentIdentifier,
 } from "@/lib/validators";
+import { SupabaseAuthError } from "@/lib/supabaseAuth";
 
 const loginSchema = z.object({
   identifier: z
@@ -65,12 +66,33 @@ export default function LoginPage() {
 
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const [lastIdentifier, setLastIdentifier] = useState<string>("");
+  const [signupCooldownUntil, setSignupCooldownUntil] = useState<number | null>(null);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+  const signupCooldownSeconds = signupCooldownUntil
+    ? Math.max(0, Math.ceil((signupCooldownUntil - currentTime) / 1000))
+    : 0;
 
   useEffect(() => {
     if (!authLoading && user) {
       navigate("/", { replace: true });
     }
   }, [authLoading, user, navigate]);
+
+  useEffect(() => {
+    if (!signupCooldownUntil) {
+      setCurrentTime(Date.now());
+      return;
+    }
+
+    const interval = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [signupCooldownUntil]);
+
+  useEffect(() => {
+    if (signupCooldownUntil && currentTime >= signupCooldownUntil) {
+      setSignupCooldownUntil(null);
+    }
+  }, [signupCooldownUntil, currentTime]);
 
   const {
     register,
@@ -121,7 +143,14 @@ export default function LoginPage() {
           "Se a confirmação de e-mail estiver ativa, verifique sua caixa de entrada para confirmar antes de entrar.",
       });
       navigate(from, { replace: true });
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof SupabaseAuthError &&
+        typeof error.retryAfterSeconds === "number" &&
+        error.retryAfterSeconds > 0
+      ) {
+        setSignupCooldownUntil(Date.now() + error.retryAfterSeconds * 1000);
+      }
       // toast já é exibido pelo hook
     }
   };
@@ -335,13 +364,18 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={registerSubmitting || authLoading}
+                disabled={registerSubmitting || authLoading || signupCooldownSeconds > 0}
                 size="lg"
               >
                 {registerSubmitting || authLoading
                   ? "Criando conta..."
                   : "Criar conta"}
               </Button>
+              {signupCooldownSeconds > 0 && (
+                <p className="mt-2 text-center text-xs text-destructive">
+                  Aguarde {signupCooldownSeconds}s antes de tentar novamente.
+                </p>
+              )}
             </form>
           )}
         </div>

@@ -4,6 +4,7 @@ export type OrgData = {
   email?: string | null;
   phone?: string | null;
   createdAt: string;
+  createdBy?: string | null;
 };
 
 export type ProjectData = {
@@ -13,6 +14,7 @@ export type ProjectData = {
   hourlyRate: number;
   status: "active" | "completed" | "paused";
   createdAt: string;
+  createdBy?: string | null;
 };
 
 export type TaskData = {
@@ -22,8 +24,9 @@ export type TaskData = {
   hours: number;
   date: string;
   dueDate: string;
-  status: "pending" | "in_progress" | "completed";
+  status: "pending" | "in_progress" | "completed" | "late";
   createdAt: string;
+  createdBy?: string | null;
 };
 
 export type Org = OrgData & { id: string };
