@@ -95,6 +95,12 @@ const buildSessionFromBody = (body: Record<string, unknown>): SupabaseSession =>
   };
 };
 
+const parseRetryAfterSeconds = (value: string | null): number | undefined => {
+  if (!value) return undefined;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? undefined : parsed;
+};
+
 const sessionEventTarget = new EventTarget();
 
 const baseHeaders = {
@@ -130,11 +136,15 @@ function emitSession(session: SupabaseSession | null) {
 
 export class SupabaseAuthError extends Error {
   code?: AuthErrorCode;
+  retryAfterSeconds?: number;
 
-  constructor(message: string, code?: AuthErrorCode) {
+  constructor(message: string, code?: AuthErrorCode, retryAfterSeconds?: number) {
     super(message);
     this.name = "SupabaseAuthError";
     this.code = code;
+    if (typeof retryAfterSeconds === "number" && !Number.isNaN(retryAfterSeconds)) {
+      this.retryAfterSeconds = retryAfterSeconds;
+    }
   }
 }
 
@@ -274,10 +284,12 @@ export async function signUpWithDocument(
     const message =
       getErrorMessageFromBody(body) ??
       response.statusText;
-    throw new Error(
-      typeof message === "string"
-        ? message
-        : "Não foi possível criar o usuário.",
+    const errorCode = getAuthErrorCodeFromBody(body);
+    const retryAfterSeconds = parseRetryAfterSeconds(response.headers.get("retry-after"));
+    throw new SupabaseAuthError(
+      typeof message === "string" ? message : "Não foi possível criar o usuário.",
+      errorCode,
+      retryAfterSeconds,
     );
   }
 
@@ -314,6 +326,8 @@ export async function signInWithPassword(email: string, password: string) {
 
     const message = getErrorMessageFromBody(body) ?? response.statusText;
 
+    const retryAfterSeconds = parseRetryAfterSeconds(response.headers.get("retry-after"));
+
     if (errorCode === "email_not_confirmed") {
       throw new SupabaseAuthError(
         "Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada ou reenvie a confirmação.",
@@ -324,6 +338,7 @@ export async function signInWithPassword(email: string, password: string) {
     throw new SupabaseAuthError(
       typeof message === "string" ? message : "Não foi possível autenticar.",
       errorCode,
+      retryAfterSeconds,
     );
   }
 

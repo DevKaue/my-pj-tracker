@@ -1,23 +1,48 @@
+﻿import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, OrgInput, ProjectInput, TaskInput } from '@/lib/api';
+import { api, ensureAuthContext, OrgInput, ProjectInput, TaskInput } from '@/lib/api';
 import { Organization, Project, Task } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
+
+function useAuthContext() {
+  const { session, user } = useAuth();
+  const userId = user?.id;
+  const auth = useMemo(() => {
+    if (!userId || !session?.access_token) return undefined;
+    return ensureAuthContext(userId, session.access_token);
+  }, [userId, session?.access_token]);
+  return { auth, userId };
+}
+
+const buildFiltersSignature = (filters?: { projectId?: string; organizationId?: string }) =>
+  `${filters?.projectId ?? ''}|${filters?.organizationId ?? ''}`;
 
 export function useOrganizations() {
   const queryClient = useQueryClient();
+  const { auth, userId } = useAuthContext();
+  const organizationKey = useMemo(() => ['organizations', userId], [userId]);
+  const getAuth = () => {
+    if (!auth) {
+      throw new Error('Usuário não autenticado');
+    }
+    return auth;
+  };
+
   const organizationsQuery = useQuery({
-    queryKey: ['organizations'],
-    queryFn: () => api.getOrganizations(),
+    queryKey: organizationKey,
+    queryFn: () => api.getOrganizations(getAuth()),
+    enabled: Boolean(auth),
   });
 
   const patchOrganizations = (updater: (items: Organization[]) => Organization[]) => {
-    queryClient.setQueryData<Organization[]>(['organizations'], (prev) => {
+    queryClient.setQueryData<Organization[]>(organizationKey, (prev) => {
       const current = prev ?? [];
       return updater(current);
     });
   };
 
   const createOrganization = useMutation({
-    mutationFn: (payload: OrgInput) => api.createOrganization(payload),
+    mutationFn: (payload: OrgInput) => api.createOrganization(payload, getAuth()),
     onSuccess: (org) => {
       patchOrganizations((items) => [...items, org]);
     },
@@ -25,41 +50,19 @@ export function useOrganizations() {
 
   const updateOrganization = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Partial<OrgInput> }) =>
-      api.updateOrganization(id, payload),
+      api.updateOrganization(id, payload, getAuth()),
     onSuccess: (org) => {
-      patchOrganizations((items) =>
-        items.map((item) => (item.id === org.id ? org : item)),
-      );
+      patchOrganizations((items) => items.map((item) => (item.id === org.id ? org : item)));
     },
   });
 
   const deleteOrganization = useMutation({
-    mutationFn: (id: string) => api.deleteOrganization(id),
+    mutationFn: (id: string) => api.deleteOrganization(id, getAuth()),
     onSuccess: (_, id) => {
       patchOrganizations((items) => items.filter((org) => org.id !== id));
-
-      const projectsData = queryClient.getQueryData<Project[]>(['projects']);
-      if (projectsData) {
-        const remainingProjects = projectsData.filter((project) => project.organizationId !== id);
-        if (remainingProjects.length !== projectsData.length) {
-          queryClient.setQueryData<Project[]>(['projects'], remainingProjects);
-        }
-
-        const removedProjectIds = new Set<string>();
-        projectsData.forEach((project) => {
-          if (project.organizationId === id) {
-            removedProjectIds.add(project.id);
-          }
-        });
-        if (removedProjectIds.size > 0) {
-          const tasksData = queryClient.getQueryData<Task[]>(['tasks']);
-          if (tasksData) {
-            queryClient.setQueryData<Task[]>(
-              ['tasks'],
-              tasksData.filter((task) => !removedProjectIds.has(task.projectId)),
-            );
-          }
-        }
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: ['projects', userId] });
+        queryClient.invalidateQueries({ queryKey: ['tasks', userId] });
       }
     },
   });
@@ -69,20 +72,30 @@ export function useOrganizations() {
 
 export function useProjects() {
   const queryClient = useQueryClient();
+  const { auth, userId } = useAuthContext();
+  const projectKey = useMemo(() => ['projects', userId], [userId]);
+  const getAuth = () => {
+    if (!auth) {
+      throw new Error('Usuário não autenticado');
+    }
+    return auth;
+  };
+
   const projectsQuery = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => api.getProjects(),
+    queryKey: projectKey,
+    queryFn: () => api.getProjects(getAuth()),
+    enabled: Boolean(auth),
   });
 
   const patchProjects = (updater: (items: Project[]) => Project[]) => {
-    queryClient.setQueryData<Project[]>(['projects'], (prev) => {
+    queryClient.setQueryData<Project[]>(projectKey, (prev) => {
       const current = prev ?? [];
       return updater(current);
     });
   };
 
   const createProject = useMutation({
-    mutationFn: (payload: ProjectInput) => api.createProject(payload),
+    mutationFn: (payload: ProjectInput) => api.createProject(payload, getAuth()),
     onSuccess: (project) => {
       patchProjects((items) => [...items, project]);
     },
@@ -90,22 +103,18 @@ export function useProjects() {
 
   const updateProject = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Partial<ProjectInput> }) =>
-      api.updateProject(id, payload),
+      api.updateProject(id, payload, getAuth()),
     onSuccess: (project) => {
-      patchProjects((items) =>
-        items.map((item) => (item.id === project.id ? project : item)),
-      );
+      patchProjects((items) => items.map((item) => (item.id === project.id ? project : item)));
     },
   });
 
   const deleteProject = useMutation({
-    mutationFn: (id: string) => api.deleteProject(id),
+    mutationFn: (id: string) => api.deleteProject(id, getAuth()),
     onSuccess: (_, id) => {
       patchProjects((items) => items.filter((project) => project.id !== id));
-
-      const tasksData = queryClient.getQueryData<Task[]>(['tasks']);
-      if (tasksData) {
-        queryClient.setQueryData<Task[]>(['tasks'], tasksData.filter((task) => task.projectId !== id));
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: ['tasks', userId] });
       }
     },
   });
@@ -115,26 +124,50 @@ export function useProjects() {
 
 export function useTasks(filters?: { projectId?: string; organizationId?: string }) {
   const queryClient = useQueryClient();
+  const { auth, userId } = useAuthContext();
+  const filtersSignature = useMemo(() => buildFiltersSignature(filters), [filters]);
+  const tasksKey = useMemo(() => ['tasks', userId, filtersSignature], [userId, filtersSignature]);
+  const getAuth = () => {
+    if (!auth) {
+      throw new Error('Usuário não autenticado');
+    }
+    return auth;
+  };
+
   const tasksQuery = useQuery({
-    queryKey: ['tasks', filters],
-    queryFn: () => api.getTasks(filters),
+    queryKey: tasksKey,
+    queryFn: () => api.getTasks(getAuth(), filters),
+    enabled: Boolean(auth),
   });
 
+  const invalidateTasks = () => {
+    if (userId) {
+      queryClient.invalidateQueries({ queryKey: ['tasks', userId] });
+    }
+  };
+
   const createTask = useMutation({
-    mutationFn: (payload: TaskInput) => api.createTask(payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+    mutationFn: (payload: TaskInput) => api.createTask(payload, getAuth()),
+    onSuccess: () => {
+      invalidateTasks();
+    },
   });
 
   const updateTask = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Partial<TaskInput> }) =>
-      api.updateTask(id, payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+      api.updateTask(id, payload, getAuth()),
+    onSuccess: () => {
+      invalidateTasks();
+    },
   });
 
   const deleteTask = useMutation({
-    mutationFn: (id: string) => api.deleteTask(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+    mutationFn: (id: string) => api.deleteTask(id, getAuth()),
+    onSuccess: () => {
+      invalidateTasks();
+    },
   });
 
   return { tasksQuery, createTask, updateTask, deleteTask };
 }
+

@@ -43,13 +43,14 @@ export function Sidebar() {
         <nav className="flex-1 space-y-1 px-3 py-4">
           {navigation.map((item) => {
             const isActive = location.pathname === item.href;
+            const Icon = item.icon;
             return (
               <Link
                 key={item.name}
                 to={item.href}
                 className={cn('nav-item', isActive && 'active')}
               >
-                <item.icon className="h-5 w-5" />
+                <Icon className="h-5 w-5" />
                 <span className="font-medium">{item.name}</span>
               </Link>
             );

@@ -144,6 +144,7 @@ export default function TasksPage() {
     pending: 'Pendente',
     in_progress: 'Em Andamento',
     completed: 'Concluída',
+    late: 'Atrasada',
   };
 
   const sortedTasks = useMemo(
@@ -251,9 +252,10 @@ export default function TasksPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pending">Pendente</SelectItem>
-                        <SelectItem value="in_progress">Em Andamento</SelectItem>
-                        <SelectItem value="completed">Concluída</SelectItem>
+                      <SelectItem value="pending">Pendente</SelectItem>
+                      <SelectItem value="in_progress">Em Andamento</SelectItem>
+                      <SelectItem value="completed">Concluída</SelectItem>
+                      <SelectItem value="late">Atrasada</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -347,7 +349,8 @@ export default function TasksPage() {
                         'badge-status',
                         task.status === 'pending' && 'badge-pending',
                         task.status === 'in_progress' && 'bg-info/10 text-info',
-                        task.status === 'completed' && 'badge-active'
+                        task.status === 'completed' && 'badge-active',
+                        task.status === 'late' && 'badge-late'
                       )}
                     >
                       {statusLabels[task.status]}

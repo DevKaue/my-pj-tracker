@@ -24,8 +24,20 @@ export type TaskInput = {
   hours: number;
   date: string | Date;
   dueDate: string | Date;
-  status: 'pending' | 'in_progress' | 'completed';
+  status: 'pending' | 'in_progress' | 'completed' | 'late';
 };
+
+export type AuthContext = {
+  userId: string;
+  token: string;
+};
+
+export function ensureAuthContext(userId?: string, token?: string): AuthContext {
+  if (!userId || !token) {
+    throw new Error('Usuário não autenticado');
+  }
+  return { userId, token };
+}
 
 type OrganizationResponse = {
   id: string;
@@ -78,9 +90,13 @@ const parseNumber = (value: number | string | undefined): number => {
   return 0;
 };
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+async function request<T>(path: string, auth: AuthContext, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${auth.token}`,
+      ...options?.headers,
+    },
     ...options,
   });
   if (!res.ok) {
@@ -127,62 +143,62 @@ const mapTask = (task: TaskResponse): Task => ({
 });
 
 export const api = {
-  async getOrganizations() {
-    const data = await request<OrganizationResponse[]>('/organizations');
+  async getOrganizations(auth: AuthContext) {
+    const data = await request<OrganizationResponse[]>('/organizations', auth);
     return data.map(mapOrganization);
   },
-  async createOrganization(payload: OrgInput) {
-    const data = await request<OrganizationResponse>('/organizations', {
+  async createOrganization(payload: OrgInput, auth: AuthContext) {
+    const data = await request<OrganizationResponse>('/organizations', auth, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
     return mapOrganization(data);
   },
-  async updateOrganization(id: string, payload: Partial<OrgInput>) {
-    const data = await request<OrganizationResponse>(`/organizations/${id}`, {
+  async updateOrganization(id: string, payload: Partial<OrgInput>, auth: AuthContext) {
+    const data = await request<OrganizationResponse>(`/organizations/${id}`, auth, {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
     return mapOrganization(data);
   },
-  async deleteOrganization(id: string) {
-    await request<void>(`/organizations/${id}`, { method: 'DELETE' });
+  async deleteOrganization(id: string, auth: AuthContext) {
+    await request<void>(`/organizations/${id}`, auth, { method: 'DELETE' });
   },
 
-  async getProjects(organizationId?: string) {
+  async getProjects(auth: AuthContext, organizationId?: string) {
     const query = organizationId ? `?organizationId=${organizationId}` : '';
-    const data = await request<ProjectResponse[]>(`/projects${query}`);
+    const data = await request<ProjectResponse[]>(`/projects${query}`, auth);
     return data.map(mapProject);
   },
-  async createProject(payload: ProjectInput) {
-    const data = await request<ProjectResponse>('/projects', {
+  async createProject(payload: ProjectInput, auth: AuthContext) {
+    const data = await request<ProjectResponse>('/projects', auth, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
     return mapProject(data);
   },
-  async updateProject(id: string, payload: Partial<ProjectInput>) {
-    const data = await request<ProjectResponse>(`/projects/${id}`, {
+  async updateProject(id: string, payload: Partial<ProjectInput>, auth: AuthContext) {
+    const data = await request<ProjectResponse>(`/projects/${id}`, auth, {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
     return mapProject(data);
   },
-  async deleteProject(id: string) {
-    await request<void>(`/projects/${id}`, { method: 'DELETE' });
+  async deleteProject(id: string, auth: AuthContext) {
+    await request<void>(`/projects/${id}`, auth, { method: 'DELETE' });
   },
 
-  async getTasks(filters?: { projectId?: string; organizationId?: string }) {
+  async getTasks(auth: AuthContext, filters?: { projectId?: string; organizationId?: string }) {
     const params = new URLSearchParams();
     if (filters?.projectId) params.append('projectId', filters.projectId);
     if (filters?.organizationId) params.append('organizationId', filters.organizationId);
     const query = params.toString() ? `?${params.toString()}` : '';
-    const data = await request<TaskResponse[]>(`/tasks${query}`);
+    const data = await request<TaskResponse[]>(`/tasks${query}`, auth);
     return data.map(mapTask);
   },
-  async createTask(payload: TaskInput) {
+  async createTask(payload: TaskInput, auth: AuthContext) {
     const { dueDate, ...rest } = payload;
-    const data = await request<TaskResponse>('/tasks', {
+    const data = await request<TaskResponse>('/tasks', auth, {
       method: 'POST',
       body: JSON.stringify({
         ...rest,
@@ -192,9 +208,9 @@ export const api = {
     });
     return mapTask(data);
   },
-  async updateTask(id: string, payload: Partial<TaskInput>) {
+  async updateTask(id: string, payload: Partial<TaskInput>, auth: AuthContext) {
     const { dueDate, ...rest } = payload;
-    const data = await request<TaskResponse>(`/tasks/${id}`, {
+    const data = await request<TaskResponse>(`/tasks/${id}`, auth, {
       method: 'PUT',
       body: JSON.stringify({
         ...rest,
@@ -204,7 +220,7 @@ export const api = {
     });
     return mapTask(data);
   },
-  async deleteTask(id: string) {
-    await request<void>(`/tasks/${id}`, { method: 'DELETE' });
+  async deleteTask(id: string, auth: AuthContext) {
+    await request<void>(`/tasks/${id}`, auth, { method: 'DELETE' });
   },
 };
