@@ -109,6 +109,12 @@
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 217 33% 17%;
     --sidebar-ring: 226 71% 60%;
+
+    /* Dark shadows — subtle blue-tinted */
+    --shadow-sm: 0 1px 2px 0 hsl(222 47% 6% / 0.3);
+    --shadow-md: 0 4px 6px -1px hsl(222 47% 6% / 0.4), 0 2px 4px -2px hsl(222 47% 6% / 0.4);
+    --shadow-lg: 0 10px 15px -3px hsl(222 47% 6% / 0.4), 0 4px 6px -4px hsl(222 47% 6% / 0.4);
+    --shadow-card: 0 1px 3px 0 hsl(222 47% 6% / 0.3), 0 1px 2px -1px hsl(222 47% 6% / 0.3);
   }
 }
 
@@ -120,6 +126,7 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -190,5 +197,9 @@
   .text-gradient {
     @apply bg-clip-text text-transparent;
     background: var(--gradient-primary);
+  }
+
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-xl border border-border;
   }
 }

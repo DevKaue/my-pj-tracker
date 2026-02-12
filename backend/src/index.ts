@@ -1,3 +1,4 @@
+import "./config/loadEnv.js";
 import cors from "cors";
 import express, { NextFunction, Request, Response } from "express";
 import swaggerUi from "swagger-ui-express";

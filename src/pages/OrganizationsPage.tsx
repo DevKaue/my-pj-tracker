@@ -209,47 +209,72 @@ export default function OrganizationsPage() {
           }
         />
       ) : (
-        <div className="card-elevated overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="table-header">Nome</TableHead>
-                <TableHead className="table-header">CNPJ</TableHead>
-                <TableHead className="table-header">E-mail</TableHead>
-                <TableHead className="table-header">Telefone</TableHead>
-                <TableHead className="table-header w-24">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {organizations.map((org) => (
-                <TableRow key={org.id}>
-                  <TableCell className="font-medium">{org.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{org.cnpj || '-'}</TableCell>
-                  <TableCell className="text-muted-foreground">{org.email || '-'}</TableCell>
-                  <TableCell className="text-muted-foreground">{org.phone || '-'}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(org)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(org.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        <div>
+          {/* Mobile card view */}
+          <div className="grid gap-3 sm:hidden">
+            {organizations.map((org) => (
+              <div key={org.id} className="card-elevated p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-foreground">{org.name}</h3>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(org)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(org.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                {org.cnpj && <p className="text-sm text-muted-foreground">CNPJ: {org.cnpj}</p>}
+                {org.email && <p className="text-sm text-muted-foreground">{org.email}</p>}
+                {org.phone && <p className="text-sm text-muted-foreground">{org.phone}</p>}
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table view */}
+          <div className="card-elevated overflow-hidden hidden sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="table-header">Nome</TableHead>
+                  <TableHead className="table-header">CNPJ</TableHead>
+                  <TableHead className="table-header">E-mail</TableHead>
+                  <TableHead className="table-header">Telefone</TableHead>
+                  <TableHead className="table-header w-24">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {organizations.map((org) => (
+                  <TableRow key={org.id}>
+                    <TableCell className="font-medium">{org.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{org.cnpj || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{org.email || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{org.phone || '-'}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(org)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(org.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
     </div>

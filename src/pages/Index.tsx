@@ -230,7 +230,7 @@ const Index = () => {
               overdueTasks.slice(0, 4).map((task) => (
                 <div
                   key={task.id}
-                  className="flex flex-col gap-1 rounded-lg border border-destructive/30 bg-white/80 px-4 py-3 shadow-sm"
+                  className="flex flex-col gap-1 rounded-lg border border-destructive/30 bg-card/80 px-4 py-3 shadow-sm"
                 >
                   <div className="flex items-center justify-between">
                     <p className="font-medium text-destructive">{task.title}</p>
@@ -250,19 +250,19 @@ const Index = () => {
 
         <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
           <p className="text-sm text-center">
-          💡 <span className="font-medium">Dica:</span> Comece criando uma{' '}
-          <Link to="/organizations" className="text-primary hover:underline">
-            organização
-          </Link>
-          , depois um{' '}
-          <Link to="/projects" className="text-primary hover:underline">
-            projeto
-          </Link>
-          , e registre suas{' '}
-          <Link to="/tasks" className="text-primary hover:underline">
-            tarefas
-          </Link>{' '}
-          diariamente para relatórios precisos.
+            💡 <span className="font-medium">Dica:</span> Comece criando uma{' '}
+            <Link to="/organizations" className="text-primary hover:underline">
+              organização
+            </Link>
+            , depois um{' '}
+            <Link to="/projects" className="text-primary hover:underline">
+              projeto
+            </Link>
+            , e registre suas{' '}
+            <Link to="/tasks" className="text-primary hover:underline">
+              tarefas
+            </Link>{' '}
+            diariamente para relatórios precisos.
           </p>
         </div>
       </div>

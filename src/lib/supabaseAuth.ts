@@ -295,11 +295,17 @@ export async function signUpWithDocument(
 
   const session = buildSessionFromBody(body);
 
-  await ensureProfileRow(session, digits, email.trim().toLowerCase());
+  // When email confirmation is enabled, Supabase returns an empty access_token.
+  // In that case, do NOT persist an invalid session.
+  const needsConfirmation = !session.access_token;
 
-  persistSession(session);
-  emitSession(session);
-  return session;
+  if (!needsConfirmation) {
+    await ensureProfileRow(session, digits, email.trim().toLowerCase());
+    persistSession(session);
+    emitSession(session);
+  }
+
+  return needsConfirmation ? null : session;
 }
 
 export async function signInWithPassword(email: string, password: string) {

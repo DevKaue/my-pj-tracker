@@ -252,10 +252,10 @@ export default function TasksPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="in_progress">Em Andamento</SelectItem>
-                      <SelectItem value="completed">Concluída</SelectItem>
-                      <SelectItem value="late">Atrasada</SelectItem>
+                        <SelectItem value="pending">Pendente</SelectItem>
+                        <SelectItem value="in_progress">Em Andamento</SelectItem>
+                        <SelectItem value="completed">Concluída</SelectItem>
+                        <SelectItem value="late">Atrasada</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -302,79 +302,127 @@ export default function TasksPage() {
           }
         />
       ) : (
-        <div className="card-elevated overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="table-header">Data</TableHead>
-                <TableHead className="table-header">Tarefa</TableHead>
-                <TableHead className="table-header">Projeto</TableHead>
-                <TableHead className="table-header">Organização</TableHead>
-                <TableHead className="table-header">Horas</TableHead>
-                <TableHead className="table-header">Status</TableHead>
-                <TableHead className="table-header w-24">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedTasks.map((task) => (
-                <TableRow key={task.id}>
-                  <TableCell className="text-muted-foreground">
-                    {format(new Date(task.date), 'dd/MM/yyyy', { locale: ptBR })}
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{task.title}</p>
-                      {task.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {task.description}
-                        </p>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {getProjectName(task.projectId)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {getOrganizationForProject(task.projectId)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-primary font-medium">
-                      <Clock className="h-4 w-4" />
+        <div>
+          {/* Mobile card view */}
+          <div className="grid gap-3 md:hidden">
+            {sortedTasks.map((task) => (
+              <div key={task.id} className="card-elevated p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-foreground truncate">{task.title}</p>
+                    <p className="text-sm text-muted-foreground">{getProjectName(task.projectId)}</p>
+                  </div>
+                  <span
+                    className={cn(
+                      'badge-status shrink-0',
+                      task.status === 'pending' && 'badge-pending',
+                      task.status === 'in_progress' && 'bg-info/10 text-info',
+                      task.status === 'completed' && 'badge-active',
+                      task.status === 'late' && 'badge-late'
+                    )}
+                  >
+                    {statusLabels[task.status]}
+                  </span>
+                </div>
+                {task.description && (
+                  <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
+                )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <span>{format(new Date(task.date), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                    <span className="flex items-center gap-1 text-primary font-medium">
+                      <Clock className="h-3.5 w-3.5" />
                       {task.hours}h
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={cn(
-                        'badge-status',
-                        task.status === 'pending' && 'badge-pending',
-                        task.status === 'in_progress' && 'bg-info/10 text-info',
-                        task.status === 'completed' && 'badge-active',
-                        task.status === 'late' && 'badge-late'
-                      )}
-                    >
-                      {statusLabels[task.status]}
                     </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(task)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(task.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(task)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(task.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table view */}
+          <div className="card-elevated overflow-hidden hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="table-header">Data</TableHead>
+                  <TableHead className="table-header">Tarefa</TableHead>
+                  <TableHead className="table-header">Projeto</TableHead>
+                  <TableHead className="table-header">Organização</TableHead>
+                  <TableHead className="table-header">Horas</TableHead>
+                  <TableHead className="table-header">Status</TableHead>
+                  <TableHead className="table-header w-24">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {sortedTasks.map((task) => (
+                  <TableRow key={task.id}>
+                    <TableCell className="text-muted-foreground">
+                      {format(new Date(task.date), 'dd/MM/yyyy', { locale: ptBR })}
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{task.title}</p>
+                        {task.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-1">
+                            {task.description}
+                          </p>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {getProjectName(task.projectId)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {getOrganizationForProject(task.projectId)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-primary font-medium">
+                        <Clock className="h-4 w-4" />
+                        {task.hours}h
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={cn(
+                          'badge-status',
+                          task.status === 'pending' && 'badge-pending',
+                          task.status === 'in_progress' && 'bg-info/10 text-info',
+                          task.status === 'completed' && 'badge-active',
+                          task.status === 'late' && 'badge-late'
+                        )}
+                      >
+                        {statusLabels[task.status]}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(task)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(task.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
     </div>

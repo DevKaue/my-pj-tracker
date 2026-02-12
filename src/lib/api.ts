@@ -203,7 +203,7 @@ export const api = {
       body: JSON.stringify({
         ...rest,
         date: new Date(payload.date).toISOString(),
-        due_date: new Date(dueDate).toISOString(),
+        dueDate: new Date(dueDate).toISOString(),
       }),
     });
     return mapTask(data);
@@ -215,7 +215,7 @@ export const api = {
       body: JSON.stringify({
         ...rest,
         date: payload.date ? new Date(payload.date).toISOString() : undefined,
-        due_date: dueDate ? new Date(dueDate).toISOString() : undefined,
+        dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
       }),
     });
     return mapTask(data);

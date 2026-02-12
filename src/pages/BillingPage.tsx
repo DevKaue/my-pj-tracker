@@ -63,7 +63,7 @@ const BillingPage = () => {
     <div className="animate-fade-in space-y-6">
       <PageHeader
         title="Faturamento"
-        description="Acompanhe a previsÃ£o de receitas e exporte informaÃ§Ãµes para seu financeiro."
+        description="Acompanhe a previsão de receitas e exporte informações para seu financeiro."
         action={
           <div className="flex gap-2">
             <Button variant="outline" className="gap-2">
@@ -88,14 +88,14 @@ const BillingPage = () => {
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="card-elevated border border-border p-4">
-          <p className="text-sm text-muted-foreground">Ãšltimos 6 meses</p>
+          <p className="text-sm text-muted-foreground">Últimos 6 meses</p>
           <p className="text-3xl font-bold text-foreground">{formattedTotalRevenue}</p>
-          <p className="text-xs text-muted-foreground">MÃ©dia mensal</p>
+          <p className="text-xs text-muted-foreground">Média mensal</p>
         </div>
         <div className="card-elevated border border-border p-4">
           <p className="text-sm text-muted-foreground">Projetos faturados</p>
           <p className="text-3xl font-bold text-foreground">{projects.length}</p>
-          <p className="text-xs text-muted-foreground">Projetos com tarefas faturÃ¡veis</p>
+          <p className="text-xs text-muted-foreground">Projetos com tarefas faturáveis</p>
         </div>
         <div className="card-elevated border border-border p-4">
           <p className="text-sm text-muted-foreground">Tarefas registradas</p>
@@ -107,12 +107,12 @@ const BillingPage = () => {
       <div className="card-elevated p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <p className="text-lg font-semibold text-foreground">PrevisÃ£o mensal</p>
+            <p className="text-lg font-semibold text-foreground">Previsão mensal</p>
             <p className="text-xs text-muted-foreground">
               Valores baseados nas horas registradas e nos valores por hora
             </p>
           </div>
-          <div className="text-right text-xs text-muted-foreground">Ãšltimos {monthlyRevenue.length} meses</div>
+          <div className="text-right text-xs text-muted-foreground">Últimos {monthlyRevenue.length} meses</div>
         </div>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -146,12 +146,12 @@ const BillingPage = () => {
       <div className="card-elevated border border-border p-6">
         <div className="mb-4">
           <p className="text-lg font-semibold text-foreground">Controle de faturamento</p>
-          <p className="text-xs text-muted-foreground">Ranking dos projetos com maior previsÃ£o</p>
+          <p className="text-xs text-muted-foreground">Ranking dos projetos com maior previsão</p>
         </div>
         <div className="space-y-3">
           {topProjects.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Ainda nÃ£o hÃ¡ faturamento registrado. Registre tarefas para ver os valores por projeto.
+              Ainda não há faturamento registrado. Registre tarefas para ver os valores por projeto.
             </p>
           ) : (
             topProjects.map((project) => (

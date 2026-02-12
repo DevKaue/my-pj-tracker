@@ -16,6 +16,7 @@ import {
   isDocumentIdentifier,
 } from "@/lib/validators";
 import { SupabaseAuthError } from "@/lib/supabaseAuth";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 const loginSchema = z.object({
   identifier: z
@@ -132,17 +133,30 @@ export default function LoginPage() {
 
   const onRegister = async (values: RegisterFormValues) => {
     try {
-      await signUp(
+      const needsEmailConfirmation = await signUp(
         values.email.trim().toLowerCase(),
         values.password,
         normalizeDocument(values.document),
       );
-      toast({
-        title: "Conta criada",
-        description:
-          "Se a confirmação de e-mail estiver ativa, verifique sua caixa de entrada para confirmar antes de entrar.",
-      });
-      navigate(from, { replace: true });
+
+      if (needsEmailConfirmation) {
+        // Email confirmation is required — show clear instructions
+        toast({
+          title: "Verifique seu e-mail",
+          description:
+            `Enviamos um link de confirmação para ${values.email.trim().toLowerCase()}. Abra o e-mail e clique no link para ativar sua conta, depois volte aqui e faça login.`,
+        });
+        setLastIdentifier(values.email.trim().toLowerCase());
+        setNeedsConfirmation(true);
+        setMode("login");
+      } else {
+        // No confirmation needed — go straight to dashboard
+        toast({
+          title: "Conta criada com sucesso!",
+          description: "Bem-vindo ao PJ Manager.",
+        });
+        navigate(from, { replace: true });
+      }
     } catch (error) {
       if (
         error instanceof SupabaseAuthError &&
@@ -192,24 +206,27 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+    <div className="min-h-screen flex items-center justify-center bg-background transition-colors duration-300">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-lg px-4 py-12">
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl shadow-slate-900/5">
+        <div className="overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-2xl shadow-foreground/5">
           <div className="space-y-2 text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.4em] text-muted-foreground">
               PJ Manager
             </p>
-            <h1 className="text-3xl font-semibold text-slate-900">
+            <h1 className="text-3xl font-semibold text-foreground">
               {mode === "login" ? "Entrar" : "Criar conta"}
             </h1>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               {mode === "login"
                 ? "Acesse seus projetos com CPF, CNPJ ou e-mail e uma senha segura."
                 : "Informe CPF/CNPJ, e-mail comercial e crie uma senha exclusiva para começar."}
             </p>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-slate-100 p-1 text-center text-sm font-semibold text-slate-500">
+          <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-muted p-1 text-center text-sm font-semibold text-muted-foreground">
             <button
               type="button"
               className={`rounded-full py-2 transition ${mode === "login" ? "bg-background text-foreground shadow-inner" : ""}`}
@@ -267,8 +284,8 @@ export default function LoginPage() {
               </Button>
 
               {needsConfirmation && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm text-slate-600">
+                <div className="rounded-xl border border-border bg-muted p-4">
+                  <p className="text-sm text-muted-foreground">
                     Seu e-mail ainda não foi confirmado. Verifique sua caixa de
                     entrada (e spam).
                   </p>
