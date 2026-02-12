@@ -17,6 +17,7 @@ import {
 } from "@/lib/validators";
 import { SupabaseAuthError } from "@/lib/supabaseAuth";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { Logo } from "@/components/shared/Logo";
 
 const loginSchema = z.object({
   identifier: z
@@ -212,7 +213,8 @@ export default function LoginPage() {
       </div>
       <div className="w-full max-w-lg px-4 py-12">
         <div className="overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-2xl shadow-foreground/5">
-          <div className="space-y-2 text-center">
+          <div className="space-y-3 text-center flex flex-col items-center">
+            <Logo size={48} />
             <p className="text-xs font-semibold uppercase tracking-[0.4em] text-muted-foreground">
               PJ Manager
             </p>

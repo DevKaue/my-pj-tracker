@@ -1,8 +1,9 @@
 import { ReactNode, useState } from 'react';
 import { Sidebar } from './Sidebar';
-import { Menu, Briefcase } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
+import { Logo } from '@/components/shared/Logo';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -24,9 +25,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           <Menu className="h-5 w-5" />
         </Button>
         <div className="flex items-center gap-2 flex-1">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
-            <Briefcase className="h-4 w-4 text-primary-foreground" />
-          </div>
+          <Logo size={32} />
           <span className="font-bold text-foreground">PJ Manager</span>
         </div>
         <ThemeToggle />
