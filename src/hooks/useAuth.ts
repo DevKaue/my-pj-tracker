@@ -28,7 +28,7 @@ interface AuthContextValue {
   user: SupabaseSession['user'] | null;
   loading: boolean;
   signIn: (identifier: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, document: string) => Promise<void>;
+  signUp: (email: string, password: string, document: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   resendConfirmation: (identifier: string) => Promise<void>;
 }
@@ -113,10 +113,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = useCallback(
-    async (email: string, password: string, document: string) => {
+    async (email: string, password: string, document: string): Promise<boolean> => {
       try {
         const authenticated = await signUpWithDocument(email, password, document);
-        setSession(authenticated);
+        if (authenticated) {
+          setSession(authenticated);
+          return false; // no confirmation needed
+        }
+        return true; // needs email confirmation
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Erro ao criar o usuário.';
         toast({

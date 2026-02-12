@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 tmp_print.py
+
+# Environment variables
+.env
+.env.local
