@@ -59,7 +59,7 @@ export async function createTask(data: Omit<TaskData, "createdAt">, userId: stri
     hours: data.hours,
     date: data.date,
     due_date: data.dueDate,
-    status: data.status,
+    status: data.status === "late" ? "pending" : data.status,
     created_by: userId,
     created_at: createdAt,
   };
@@ -79,7 +79,8 @@ export async function updateTask(id: string, data: Partial<TaskData>, userId: st
   if (data.projectId !== undefined) payload.project_id = data.projectId;
   if (data.hours !== undefined) payload.hours = data.hours;
   if (data.date !== undefined) payload.date = data.date;
-  if (data.status !== undefined) payload.status = data.status;
+  // "late" is computed on read (mapTaskRow), never stored. Normalize to "pending".
+  if (data.status !== undefined) payload.status = data.status === "late" ? "pending" : data.status;
   if (data.dueDate !== undefined) payload.due_date = data.dueDate;
   const rows = await supabaseRequest<Task[]>(`tasks`, {
     method: "PATCH",
