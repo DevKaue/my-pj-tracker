@@ -24,3 +24,10 @@ export const taskSchema = z.object({
   dueDate: z.string().transform((val) => new Date(val).toISOString()),
   status: z.enum(["pending", "in_progress", "completed", "late"]),
 });
+
+export const profileSchema = z.object({
+  companyName: z.string().optional(),
+  companyCnpj: z.string().optional(),
+  logoUrl: z.string().url().optional().or(z.literal("")),
+  phone: z.string().optional(),
+});

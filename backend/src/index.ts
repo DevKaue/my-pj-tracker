@@ -6,6 +6,7 @@ import { openApiDoc } from "./config/openapi.js";
 import { organizationsRouter } from "./routes/organizations.js";
 import { projectsRouter } from "./routes/projects.js";
 import { tasksRouter } from "./routes/tasks.js";
+import { profilesRouter } from "./routes/profiles.js";
 import { z } from "zod";
 
 const PORT = process.env.PORT || 4000;
@@ -22,6 +23,7 @@ app.get("/health", (_req, res) => {
 app.use("/organizations", organizationsRouter);
 app.use("/projects", projectsRouter);
 app.use("/tasks", tasksRouter);
+app.use("/profiles", profilesRouter);
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error("API error", err);

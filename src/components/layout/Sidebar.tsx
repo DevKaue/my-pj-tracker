@@ -8,6 +8,8 @@ import {
   DollarSign,
   X,
   LogOut,
+  PieChart,
+  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -21,7 +23,8 @@ const navigation = [
   { name: 'Projetos', href: '/projects', icon: FolderKanban },
   { name: 'Tarefas', href: '/tasks', icon: CheckSquare },
   { name: 'Relatórios', href: '/reports', icon: FileText },
-  { name: 'Faturamento', href: '/billing', icon: DollarSign },
+  { name: 'Faturamento', href: '/billing', icon: PieChart },
+  { name: 'Perfil', href: '/profile', icon: User },
 ];
 
 interface SidebarProps {

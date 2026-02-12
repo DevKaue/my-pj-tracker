@@ -12,6 +12,7 @@ import ReportsPage from "./pages/ReportsPage";
 import BillingPage from "./pages/BillingPage";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/Login";
+import ProfilePage from "./pages/ProfilePage";
 import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,7 @@ const App = () => (
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/billing" element={<BillingPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

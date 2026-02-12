@@ -23,11 +23,15 @@ import {
 import { FileText, Download, Clock, DollarSign, Building2, FolderKanban } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
+import { useProfile } from '@/hooks/useData';
 
 export default function ReportsPage() {
   const { organizationsQuery } = useOrganizations();
   const { projectsQuery } = useProjects();
   const { tasksQuery } = useTasks();
+  const { profileQuery } = useProfile();
   const [filters, setFilters] = useState({
     startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
     endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
@@ -91,25 +95,100 @@ export default function ReportsPage() {
     return { projectData, totalHours, totalValue };
   }, [tasks, projects, organizations, filters]);
 
-  const exportToCSV = () => {
+  const exportToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Relatório');
+
+    // Styling
+    const headerStyle = {
+      font: { bold: true, color: { argb: 'FFFFFF' } },
+      fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: '4F46E5' } }, // Primary color
+      alignment: { horizontal: 'center' as const },
+    };
+
+    const currencyFormat = '"R$" #,##0.00';
+    const numberFormat = '#,##0.00';
+
+    // Add Company Info
+    let startRow = 1;
+    if (profileQuery.data?.companyName) {
+      worksheet.mergeCells('A1:E1');
+      const titleCell = worksheet.getCell('A1');
+      titleCell.value = profileQuery.data.companyName;
+      titleCell.font = { size: 16, bold: true };
+      titleCell.alignment = { horizontal: 'center' };
+      startRow = 3;
+    }
+
+    // Add Headers
     const headers = ['Projeto', 'Organização', 'Valor/Hora', 'Horas', 'Valor Total'];
-    const rows = filteredData.projectData.map((p) => [
-      p.projectName,
-      p.organizationName,
-      `R$ ${p.hourlyRate.toFixed(2)}`,
-      p.hours.toFixed(2),
-      `R$ ${p.value.toFixed(2)}`,
-    ]);
+    const headerRow = worksheet.getRow(startRow);
+    headerRow.values = headers;
+    headerRow.eachCell((cell) => {
+      cell.font = headerStyle.font;
+      cell.fill = headerStyle.fill;
+      cell.alignment = headerStyle.alignment;
+    });
 
-    rows.push(['', '', '', '', '']);
-    rows.push(['TOTAL', '', '', filteredData.totalHours.toFixed(2), `R$ ${filteredData.totalValue.toFixed(2)}`]);
+    // Add Data
+    let currentRow = startRow + 1;
+    filteredData.projectData.forEach((project) => {
+      const row = worksheet.getRow(currentRow);
+      row.values = [
+        project.projectName,
+        project.organizationName,
+        project.hourlyRate,
+        project.hours,
+        project.value,
+      ];
 
-    const csvContent = [headers, ...rows].map((row) => row.join(';')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `relatorio-${filters.startDate}-${filters.endDate}.csv`;
-    link.click();
+      // Formats
+      row.getCell(3).numFmt = currencyFormat;
+      row.getCell(4).numFmt = numberFormat;
+      row.getCell(5).numFmt = currencyFormat;
+
+      currentRow++;
+    });
+
+    // Add Total Row
+    const totalRow = worksheet.getRow(currentRow);
+    totalRow.values = [
+      'TOTAL',
+      '',
+      '',
+      filteredData.totalHours,
+      filteredData.totalValue,
+    ];
+    totalRow.font = { bold: true };
+    totalRow.getCell(4).numFmt = numberFormat;
+    totalRow.getCell(5).numFmt = currencyFormat;
+
+    // Add Borders
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber >= startRow && rowNumber <= currentRow) {
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' },
+          };
+        });
+      }
+    });
+
+    // Column widths
+    worksheet.columns = [
+      { width: 30 }, // Projeto
+      { width: 30 }, // Organização
+      { width: 15 }, // Valor/Hora
+      { width: 12 }, // Horas
+      { width: 18 }, // Valor Total
+    ];
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, `relatorio-${filters.startDate}-${filters.endDate}.xlsx`);
   };
 
   const filteredProjects = filters.organizationId
@@ -123,9 +202,9 @@ export default function ReportsPage() {
         description="Visualize e exporte dados para sua nota fiscal"
         action={
           filteredData.projectData.length > 0 && (
-            <Button onClick={exportToCSV} className="gap-2">
+            <Button onClick={exportToExcel} className="gap-2">
               <Download className="h-4 w-4" />
-              Exportar CSV
+              Exportar Excel
             </Button>
           )
         }

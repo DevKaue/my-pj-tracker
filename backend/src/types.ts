@@ -29,8 +29,19 @@ export type TaskData = {
   createdBy?: string | null;
 };
 
+export type ProfileData = {
+  email: string;
+  document: string;
+  companyName?: string | null;
+  companyCnpj?: string | null;
+  logoUrl?: string | null;
+  phone?: string | null;
+  userId: string;
+};
+
 export type Org = OrgData & { id: string };
 export type Project = ProjectData & { id: string };
 export type Task = TaskData & { id: string };
+export type Profile = ProfileData & { id: string };
 
 export const notNull = <T>(value: T | null | undefined): value is T => value != null;
