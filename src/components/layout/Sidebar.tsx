@@ -5,7 +5,6 @@ import {
   FolderKanban,
   CheckSquare,
   FileText,
-  Briefcase,
   DollarSign,
   X,
   LogOut,
@@ -14,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from './ThemeToggle';
+import { Logo } from '@/components/shared/Logo';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -54,15 +54,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="flex h-full flex-col">
           {/* Logo */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-border">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary shadow-md">
-                <Briefcase className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-foreground">PJ Manager</h1>
-                <p className="text-xs text-muted-foreground">Gestão Inteligente</p>
-              </div>
-            </div>
+            <Logo size={40} showText />
             {/* Close button — mobile only */}
             <Button
               variant="ghost"
