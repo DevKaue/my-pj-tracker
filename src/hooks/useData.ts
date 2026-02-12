@@ -1,6 +1,6 @@
 ﻿import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, ensureAuthContext, OrgInput, ProjectInput, TaskInput } from '@/lib/api';
+import { api, ensureAuthContext, OrgInput, ProjectInput, TaskInput, ProfileInput } from '@/lib/api';
 import { Organization, Project, Task } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -169,5 +169,32 @@ export function useTasks(filters?: { projectId?: string; organizationId?: string
   });
 
   return { tasksQuery, createTask, updateTask, deleteTask };
+}
+
+export function useProfile() {
+  const queryClient = useQueryClient();
+  const { auth, userId } = useAuthContext();
+  const profileKey = useMemo(() => ['profile', userId], [userId]);
+  const getAuth = () => {
+    if (!auth) {
+      throw new Error('Usuário não autenticado');
+    }
+    return auth;
+  };
+
+  const profileQuery = useQuery({
+    queryKey: profileKey,
+    queryFn: () => api.getProfile(getAuth()),
+    enabled: Boolean(auth),
+  });
+
+  const updateProfile = useMutation({
+    mutationFn: (payload: ProfileInput) => api.updateProfile(payload, getAuth()),
+    onSuccess: (profile) => {
+      queryClient.setQueryData(profileKey, profile);
+    },
+  });
+
+  return { profileQuery, updateProfile };
 }
 

@@ -17,7 +17,7 @@ function getBearerToken(authHeader?: string): string | null {
   return token;
 }
 
-async function fetchUserId(token: string): Promise<string> {
+export async function fetchUser(token: string): Promise<any> {
   const response = await fetch(`${AUTH_URL}/user`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -27,7 +27,11 @@ async function fetchUserId(token: string): Promise<string> {
   if (!response.ok) {
     throw new Error("token_invalido");
   }
-  const body = (await response.json().catch(() => ({}))) as SupabaseUserResponse;
+  return response.json();
+}
+
+async function fetchUserId(token: string): Promise<string> {
+  const body = await fetchUser(token);
   if (!body?.id) {
     throw new Error("token_invalido");
   }

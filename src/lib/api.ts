@@ -1,4 +1,4 @@
-import type { Organization, Project, Task } from '@/types';
+import type { Organization, Project, Task, Profile } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
@@ -25,6 +25,13 @@ export type TaskInput = {
   date: string | Date;
   dueDate: string | Date;
   status: 'pending' | 'in_progress' | 'completed' | 'late';
+};
+
+export type ProfileInput = {
+  companyName?: string;
+  companyCnpj?: string;
+  logoUrl?: string;
+  phone?: string;
 };
 
 export type AuthContext = {
@@ -222,5 +229,15 @@ export const api = {
   },
   async deleteTask(id: string, auth: AuthContext) {
     await request<void>(`/tasks/${id}`, auth, { method: 'DELETE' });
+  },
+
+  async getProfile(auth: AuthContext) {
+    return request<Profile>('/profiles/me', auth);
+  },
+  async updateProfile(payload: ProfileInput, auth: AuthContext) {
+    return request<Profile>('/profiles/me', auth, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
   },
 };

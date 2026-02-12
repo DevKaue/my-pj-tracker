@@ -41,6 +41,10 @@ const MONTHS = [
 const fmtCurrency = (value: number, show: boolean) =>
   show ? `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '••••';
 
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
+import { useProfile } from '@/hooks/useData';
+
 const BillingPage = () => {
   const { tasksQuery } = useTasks();
   const { projectsQuery } = useProjects();
@@ -193,6 +197,80 @@ const BillingPage = () => {
     ? filterYear === 'all' ? 'Todo o período' : `Ano ${filterYear}`
     : `${MONTHS[parseInt(filterMonth, 10)]?.label}/${filterYear}`;
 
+  const { profileQuery } = useProfile();
+
+  const handleExport = async () => {
+    if (!tasks.length) return;
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Faturamento');
+
+    // Styling
+    const headerStyle = {
+      font: { bold: true, color: { argb: 'FFFFFF' } },
+      fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: '4F46E5' } }, // Primary color
+      alignment: { horizontal: 'center' as const },
+    };
+
+    // Add Company Info
+    let startRow = 1;
+    if (profileQuery.data?.companyName) {
+      worksheet.mergeCells('A1:E1');
+      const titleCell = worksheet.getCell('A1');
+      titleCell.value = profileQuery.data.companyName;
+      titleCell.font = { size: 16, bold: true };
+      titleCell.alignment = { horizontal: 'center' };
+      startRow = 3;
+    }
+
+    // Add Headers
+    const headers = ['Data', 'Projeto', 'Descrição', 'Horas', 'Valor (R$)'];
+    const headerRow = worksheet.getRow(startRow);
+    headerRow.values = headers;
+    headerRow.eachCell((cell) => {
+      cell.font = headerStyle.font;
+      cell.fill = headerStyle.fill;
+      cell.alignment = headerStyle.alignment;
+    });
+
+    // Add Data
+    let currentRow = startRow + 1;
+    tasks.forEach((task) => {
+      const project = projects.find((p) => p.id === task.projectId);
+      if (!project) return;
+
+      // Apply filters for export too
+      const taskDate = new Date(task.date);
+      const y = taskDate.getFullYear().toString();
+      const m = String(taskDate.getMonth());
+      if (filterYear !== 'all' && y !== filterYear) return;
+      if (filterMonth !== 'all' && m !== filterMonth) return;
+
+      const row = worksheet.getRow(currentRow);
+      row.values = [
+        format(taskDate, 'dd/MM/yyyy'),
+        project.name,
+        task.title,
+        task.hours,
+        project.hourlyRate * task.hours,
+      ];
+      currentRow++;
+    });
+
+    // Column widths
+    worksheet.columns = [
+      { width: 15 },
+      { width: 30 },
+      { width: 40 },
+      { width: 10 },
+      { width: 15 },
+    ];
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, `faturamento_${format(now, 'yyyy-MM-dd')}.xlsx`);
+  };
+
   return (
     <div className="animate-fade-in space-y-6">
       <PageHeader
@@ -200,8 +278,8 @@ const BillingPage = () => {
         description="Acompanhe a previsão de receitas e exporte informações para seu financeiro."
         action={
           <div className="flex gap-2">
-            <Button variant="outline" className="gap-2">
-              Exportar CSV
+            <Button variant="outline" className="gap-2" onClick={handleExport}>
+              Exportar Excel
             </Button>
             <Button size="sm" variant="ghost" className="gap-2" onClick={() => setShowValues((prev) => !prev)}>
               {showValues ? (

@@ -29,6 +29,17 @@ export interface Task {
   createdAt: Date;
 }
 
+export interface Profile {
+  id: string;
+  userId: string;
+  email: string;
+  document: string;
+  companyName?: string | null;
+  companyCnpj?: string | null;
+  logoUrl?: string | null;
+  phone?: string | null;
+}
+
 export interface ReportFilters {
   startDate: Date;
   endDate: Date;
